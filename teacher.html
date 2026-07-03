@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>마음 점프! — 교사 발표 모드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{ --mint:#3FE5A0; --dark:#14171c; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background:var(--dark); color:#e8ecf1; min-height:100vh;
+    font-family:"Jua","Apple SD Gothic Neo",sans-serif;
+    padding:24px 16px; display:flex; flex-direction:column; align-items:center;
+  }
+  h1{ font-size:24px; margin-bottom:16px; }
+  h1 .mint{ color:var(--mint); }
+  .hidden{ display:none !important; }
+
+  #setup{ background:#1d222b; border-radius:16px; padding:28px; text-align:center; max-width:520px; width:100%; }
+  #setup p{ color:#9aa5b3; font-size:14px; line-height:1.8; margin-bottom:16px; }
+  #setup input{
+    font-family:inherit; font-size:26px; text-align:center; letter-spacing:6px; text-transform:uppercase;
+    width:220px; background:#12151b; color:var(--mint); border:2px solid #333b47; border-radius:12px; padding:12px; outline:none;
+  }
+  #setup input:focus{ border-color:var(--mint); }
+  .btn{
+    font-family:inherit; border:none; cursor:pointer; font-size:16px;
+    background:var(--mint); color:#0b3d28; padding:12px 24px; border-radius:12px; margin:6px;
+    box-shadow:0 4px 0 #23a06c;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #23a06c; }
+  .btn.ghost{ background:#2a313c; color:#cdd6e0; box-shadow:0 4px 0 #1a1f27; }
+
+  #live{ width:100%; max-width:1200px; }
+  #head-row{
+    display:flex; align-items:center; gap:24px; flex-wrap:wrap;
+    background:#1d222b; border-radius:16px; padding:18px 24px; margin-bottom:18px;
+  }
+  #code-big{ font-size:44px; color:var(--mint); letter-spacing:8px; }
+  #head-row .lbl{ font-size:14px; color:#9aa5b3; }
+  #qr{ width:110px; height:110px; border-radius:10px; background:#fff; padding:6px; }
+  #summary{ font-size:18px; line-height:1.9; margin-left:auto; text-align:right; }
+  #summary b{ color:var(--mint); }
+
+  #grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:12px;
+  }
+  .stu{
+    background:#1d222b; border-radius:14px; padding:14px 16px;
+    border-left:5px solid #4a5563; transition:border-color .3s, transform .2s;
+  }
+  .stu.fresh{ transform:scale(1.03); }
+  .stu .who{ font-size:17px; margin-bottom:6px; }
+  .stu .who small{ color:#8b97a5; font-size:12px; margin-left:4px; }
+  .stu .st{ font-size:14px; color:#b9c3cf; margin-bottom:8px; }
+  .stu .bar{ height:8px; background:#2a313c; border-radius:99px; overflow:hidden; margin-bottom:6px; }
+  .stu .bar i{ display:block; height:100%; background:var(--mint); border-radius:99px; transition:width .4s; }
+  .stu .nums{ font-size:13px; color:#9aa5b3; }
+  .stu.s1{ border-left-color:#58c26a; } .stu.s2{ border-left-color:#3fa8d8; }
+  .stu.s3{ border-left-color:#e8843c; } .stu.s4{ border-left-color:#9d8fd8; }
+  .stu.storm{ border-left-color:#f3c53d; } .stu.done{ border-left-color:var(--mint); background:#1c2b24; }
+  #empty{ color:#67727f; font-size:16px; text-align:center; padding:60px 0; grid-column:1/-1; line-height:1.9; }
+</style>
+</head>
+<body>
+<h1>🍄 마음 점프! <span class="mint">교사 발표 모드</span></h1>
+
+<div id="setup">
+  <p>교실 코드를 만들어 화면에 띄워 주세요.<br>
+     학생들이 게임 첫 화면에 코드를 입력하거나 QR을 찍으면<br>이 화면에 진행 상황이 실시간으로 나타납니다.</p>
+  <input id="code" placeholder="CODE" maxlength="8"><br>
+  <button class="btn ghost" id="btn-new">🎲 코드 만들기</button>
+  <button class="btn" id="btn-go">발표 시작 ▶</button>
+</div>
+
+<div id="live" class="hidden">
+  <div id="head-row">
+    <div>
+      <div class="lbl">교실 코드</div>
+      <div id="code-big"></div>
+    </div>
+    <div style="text-align:center;">
+      <img id="qr" alt="QR">
+      <div class="lbl">QR로 바로 입장</div>
+    </div>
+    <div id="summary"></div>
+  </div>
+  <div id="grid"><div id="empty">아직 입장한 학생이 없어요.<br>게임 첫 화면에서 교실 코드를 입력하면 여기에 나타납니다 🌱</div></div>
+</div>
+
+<script>
+"use strict";
+const FB_CONFIG = {
+  apiKey: "AIzaSyAPjRhpGsBiILOk4xIO6qdwU5deE556nis",
+  authDomain: "mind-jump.firebaseapp.com",
+  projectId: "mind-jump",
+  storageBucket: "mind-jump.firebasestorage.app",
+  messagingSenderId: "640879942374",
+  appId: "1:640879942374:web:072026fb598ddc39777927"
+};
+firebase.initializeApp(FB_CONFIG);
+const db = firebase.firestore();
+
+const GAME_URL = "https://cleveranawim-source.github.io/mind-jump/";
+const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // 헷갈리는 I·O·0·1 제외
+
+document.getElementById("btn-new").onclick = () => {
+  let c = "";
+  for (let i = 0; i < 4; i++) c += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  document.getElementById("code").value = c;
+};
+
+let unsub = null;
+function startLive(code){
+  document.getElementById("setup").classList.add("hidden");
+  document.getElementById("live").classList.remove("hidden");
+  document.getElementById("code-big").textContent = code;
+  document.getElementById("qr").src =
+    "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(GAME_URL + "?room=" + code);
+  if (unsub) unsub();
+  unsub = db.collection("rooms").doc(code).collection("students")
+    .onSnapshot(snap => render(snap), () => {});
+}
+
+const stageInfo = s =>
+  s.state === "done"  ? { txt: "🏆 완주!", cls: "done" } :
+  s.state === "storm" ? { txt: "⛈️ 마음의 폭풍", cls: "storm" } :
+  s.state === "clear" ? { txt: `${s.stage}단계 클리어 🚩`, cls: "s" + s.stage } :
+                        { txt: `${s.stage}단계 모험 중 🏃`, cls: "s" + s.stage };
+
+let lastUpdate = {};
+function render(snap){
+  const grid = document.getElementById("grid");
+  const rows = [];
+  snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+  rows.sort((a, b) => (a.cls || "").localeCompare(b.cls || "") || (a.name || "").localeCompare(b.name || ""));
+
+  const doneN = rows.filter(r => r.state === "done").length;
+  document.getElementById("summary").innerHTML =
+    `참여 <b>${rows.length}</b>명 · 완주 <b>${doneN}</b>명<br>` +
+    `<span style="font-size:13px;color:#9aa5b3;">💛 하트 합계 ${rows.reduce((s, r) => s + (r.hearts || 0), 0)}</span>`;
+
+  if (!rows.length) return;
+  grid.innerHTML = "";
+  for (const r of rows){
+    const info = stageInfo(r);
+    const pct = r.maxHearts ? Math.round((r.hearts || 0) / r.maxHearts * 100) : 0;
+    const card = document.createElement("div");
+    card.className = "stu " + info.cls;
+    const key = JSON.stringify([r.hearts, r.stage, r.state, r.gems]);
+    if (lastUpdate[r.id] && lastUpdate[r.id] !== key) card.classList.add("fresh");
+    lastUpdate[r.id] = key;
+    card.innerHTML =
+      `<div class="who">${r.name || "?"} <small>${r.cls || ""}</small></div>` +
+      `<div class="st">${info.txt}</div>` +
+      `<div class="bar"><i style="width:${pct}%"></i></div>` +
+      `<div class="nums">💛 ${r.hearts || 0}/${r.maxHearts || 20} · 💎 ${r.gems || 0} · 🌈 ${r.rainbows || 0}</div>`;
+    grid.appendChild(card);
+    setTimeout(() => card.classList.remove("fresh"), 600);
+  }
+}
+
+document.getElementById("btn-go").onclick = () => {
+  const code = document.getElementById("code").value.trim().toUpperCase();
+  if (code.length < 3){ alert("3글자 이상의 교실 코드를 만들어 주세요!"); return; }
+  startLive(code);
+};
+
+// ?code= 파라미터로 바로 시작 가능
+const urlCode = new URLSearchParams(location.search).get("code");
+if (urlCode){ document.getElementById("code").value = urlCode.toUpperCase(); startLive(urlCode.toUpperCase()); }
+</script>
+</body>
+</html>

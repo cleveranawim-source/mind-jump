@@ -1,7 +1,7 @@
 /* 마음 점프! 서비스워커 — 오프라인 지원
    index.html은 network-first(항상 최신), 나머지는 cache-first */
-const CACHE = "mind-jump-v1";
-const ASSETS = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+const CACHE = "mind-jump-v2";
+const ASSETS = ["./", "./index.html", "./teacher.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -21,8 +21,8 @@ self.addEventListener("fetch", e => {
   if (e.request.mode === "navigate"){
     e.respondWith(
       fetch(e.request)
-        .then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put("./index.html", cp)); return r; })
-        .catch(() => caches.match("./index.html"))
+        .then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); return r; })
+        .catch(() => caches.match(e.request).then(hit => hit || caches.match("./index.html")))
     );
     return;
   }

@@ -10,6 +10,8 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#14171c">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
 <style>
   :root{ --mint:#3FE5A0; --dark:#14171c; --card:#ffffff; }
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -142,6 +144,7 @@
       <div class="inputs">
         <input id="in-class" placeholder="반 (예: 2-3)" maxlength="10">
         <input id="in-name" placeholder="이름" maxlength="10">
+        <input id="in-room" placeholder="교실 코드(선택)" maxlength="8" style="width:130px;">
       </div>
       <button class="btn" id="btn-start">모험 시작! ▶</button>
       <div class="lvlrow">
@@ -219,7 +222,8 @@
 </div>
 <div id="foot">
   명지중학교 사회정서교육(SEL) · 감정 알아차리기 → 친구 마음 공감 → 화 다스리기 → 함께하는 공동체<br>
-  친구의 고민에 대답이 틀려도 괜찮아요. 다시 생각해서 고르면 돼요 💚
+  친구의 고민에 대답이 틀려도 괜찮아요. 다시 생각해서 고르면 돼요 💚<br>
+  <a href="teacher.html" style="color:#4a5563;">교사용 발표 모드</a>
 </div>
 
 <script>
@@ -918,6 +922,7 @@ function update(dt){
     toast(`🌈 숨겨진 무지개 보석 발견! (${totalRainbows}/4)`);
     burst(lv.rainbow.c*T + 20, lv.rainbow.r*T + 20, "#ff9ff3");
     burst(lv.rainbow.c*T + 20, lv.rainbow.r*T + 20, "#74b9ff");
+    syncProgress();
   }
 
   // NPC
@@ -1005,6 +1010,7 @@ document.getElementById("dlg-next").onclick = () => {
     toast("📍 체크포인트! 이제 여기서 다시 시작해");
   }
   state = "play";
+  syncProgress();
 };
 
 /* ---------- 클리어 ---------- */
@@ -1020,6 +1026,7 @@ function stageClear(){
     (totalRainbows ? ` &nbsp;·&nbsp; 🌈 ${totalRainbows}` : "");
   document.getElementById("btn-next").classList.remove("hidden");
   document.getElementById("clear").classList.remove("hidden");
+  syncProgress("clear");
 }
 
 /* ---------- 마음의 폭풍 (최종 복습 관문) ---------- */
@@ -1030,6 +1037,7 @@ function startStorm(){
   stormIdx = 0;
   document.getElementById("storm").classList.remove("hidden");
   renderStorm();
+  syncProgress("storm");
 }
 function renderStorm(){
   const clouds = document.getElementById("storm-clouds");
@@ -1078,6 +1086,7 @@ function showReport(){
     `💎 ${totalGems}/${maxGems} · 💛 ${totalHearts}/${maxHearts} · 🌈 ${totalRainbows}/4`;
   document.getElementById("rep-rainbow").classList.toggle("hidden", totalRainbows < 4);
   document.getElementById("report").classList.remove("hidden");
+  syncProgress("done");
 }
 document.getElementById("btn-rep-home").onclick = () => {
   document.getElementById("report").classList.add("hidden");
@@ -1139,12 +1148,14 @@ function startGame(levelIdx){
     maxGems += pl.gems.length;
     maxHearts += pl.npcs.length;
   }
-  // 이름·반 저장 (수료증에 사용)
+  // 이름·반·교실코드 저장
   localStorage.setItem("mj-class", document.getElementById("in-class").value.trim());
   localStorage.setItem("mj-name", document.getElementById("in-name").value.trim());
+  localStorage.setItem("mj-room", document.getElementById("in-room").value.trim().toUpperCase());
   document.getElementById("title").classList.add("hidden");
   loadLevel(levelIdx); state = "play";
   bgmStart();
+  syncProgress("play");
 }
 document.getElementById("btn-start").onclick = () => startGame(0);
 document.querySelectorAll(".lvl").forEach(b => b.onclick = () => startGame(+b.dataset.l));
@@ -1398,9 +1409,55 @@ function frame(now){
 lv = parseLevel(0);
 requestAnimationFrame(frame);
 
-// 이름·반 입력 복원
+/* ---------- 교실 코드 실시간 진행 공유 (선택 기능) ---------- */
+const FB_CONFIG = {
+  apiKey: "AIzaSyAPjRhpGsBiILOk4xIO6qdwU5deE556nis",
+  authDomain: "mind-jump.firebaseapp.com",
+  projectId: "mind-jump",
+  storageBucket: "mind-jump.firebasestorage.app",
+  messagingSenderId: "640879942374",
+  appId: "1:640879942374:web:072026fb598ddc39777927"
+};
+let fbdb = null;
+function db(){
+  if (fbdb) return fbdb;
+  try {
+    if (!window.firebase || !firebase.firestore) return null;   // CDN 로드 전/차단 시 조용히 패스
+    if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+    fbdb = firebase.firestore();
+  } catch(e){ fbdb = null; }
+  return fbdb;
+}
+const sid = localStorage.getItem("mj-sid") ||
+  (() => { const s = Math.random().toString(36).slice(2, 10); localStorage.setItem("mj-sid", s); return s; })();
+let lastSync = "";
+function syncProgress(st){
+  const code = (localStorage.getItem("mj-room") || "").trim().toUpperCase();
+  const d = db();
+  if (!code || !d) return;
+  const name = (localStorage.getItem("mj-name") || "").trim() || ("모험가-" + sid.slice(0, 3));
+  const data = {
+    cls: (localStorage.getItem("mj-class") || "").trim(),
+    name, stage: cur + 1, state: st || state,
+    hearts: totalHearts, maxHearts, gems: totalGems, rainbows: totalRainbows
+  };
+  const key = JSON.stringify(data);
+  if (key === lastSync) return;      // 변화 없으면 쓰기 생략
+  lastSync = key;
+  try {
+    d.collection("rooms").doc(code).collection("students").doc(sid)
+      .set({ ...data, t: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true })
+      .catch(() => {});
+  } catch(e){}
+}
+setInterval(() => { if (state === "play" || state === "storm") syncProgress(); }, 12000);
+
+// 이름·반·교실코드 입력 복원 (QR의 ?room= 파라미터가 우선)
+const urlRoom = new URLSearchParams(location.search).get("room");
+if (urlRoom) localStorage.setItem("mj-room", urlRoom.trim().toUpperCase());
 document.getElementById("in-class").value = localStorage.getItem("mj-class") || "";
 document.getElementById("in-name").value = localStorage.getItem("mj-name") || "";
+document.getElementById("in-room").value = localStorage.getItem("mj-room") || "";
 
 // PWA 서비스워커 (배포 환경에서만)
 if ("serviceWorker" in navigator && location.protocol === "https:")
