@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14171c">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{ --mint:#3FE5A0; --dark:#14171c; --card:#ffffff; }
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -46,6 +49,35 @@
   .btn.ghost{ background:#eef2f6; color:#445; box-shadow:0 4px 0 #c9d2da; font-size:14px; padding:9px 16px; }
   .lvlrow{ margin-top:10px; }
   .controls{ font-size:13px; color:#556; background:#f2f6f9; border-radius:10px; padding:10px 12px; margin:12px 0 4px; line-height:1.8; }
+
+  /* 이름·반 입력 */
+  .inputs{ display:flex; gap:8px; justify-content:center; margin:4px 0 12px; }
+  .inputs input{
+    font-family:inherit; font-size:15px; text-align:center;
+    border:2px solid #dfe6ec; border-radius:10px; padding:9px 6px; outline:none;
+  }
+  .inputs input:focus{ border-color:var(--mint); }
+  #in-class{ width:110px; } #in-name{ width:150px; }
+
+  /* 마음의 폭풍 (최종 복습) */
+  #storm{ background:linear-gradient(rgba(23,30,58,.88), rgba(40,50,90,.88)); }
+  #storm .card{ text-align:left; max-width:640px; position:relative; overflow:hidden; }
+  #storm-clouds{ font-size:38px; text-align:center; letter-spacing:14px; margin:6px 0 10px; }
+  #storm-q{ font-size:16px; line-height:1.65; background:#eef2fb; border-radius:12px; padding:12px 14px; margin-bottom:12px; }
+  #storm-fb{ border-radius:12px; padding:12px 14px; font-size:15px; line-height:1.6; margin-top:4px; }
+  #storm-fb.good{ background:#e7fbf1; color:#0b6b45; }
+  #storm-next{ margin-top:12px; width:100%; }
+  .storm-head{ text-align:center; }
+
+  /* 수료증 */
+  .cert{ border:4px solid var(--mint); outline:3px solid #d9f7ea; outline-offset:3px; background:#fffdf6; }
+  .cert-title{ font-size:26px; margin-bottom:4px; }
+  .cert-who{ font-size:22px; color:#0b6b45; margin:8px 0 2px; }
+  .cert-date{ font-size:13px; color:#889; margin-bottom:12px; }
+  .cert-skills{ font-size:16px; line-height:2; background:#f2faf6; border-radius:12px; padding:10px; margin-bottom:12px; }
+  .cert-stats{ font-size:17px; font-weight:700; margin-bottom:8px; }
+  .cert-rb{ font-size:14px; color:#b3541e; background:#fff4e5; border-radius:10px; padding:8px; margin-bottom:10px; }
+  .cert-msg{ font-size:14px; color:#556; line-height:1.7; margin-bottom:14px; }
 
   /* 대화창 */
   #dlg .card{ text-align:left; max-width:640px; }
@@ -107,6 +139,10 @@
         ⌨️ <b>← →</b> 이동 · <b>스페이스/↑</b> 점프 · <b>1·2·3</b> 대답 고르기 · <b>R</b> 다시 시작<br>
         📱 모바일은 화면 버튼 · 💡 고민을 풀어준 자리가 <b>체크포인트</b> · 🔒 <b>친구를 모두 도와야</b> 깃발이 열려요!
       </div>
+      <div class="inputs">
+        <input id="in-class" placeholder="반 (예: 2-3)" maxlength="10">
+        <input id="in-name" placeholder="이름" maxlength="10">
+      </div>
       <button class="btn" id="btn-start">모험 시작! ▶</button>
       <div class="lvlrow">
         <button class="btn ghost lvl" data-l="0">1. 감정 알아차리기</button>
@@ -137,6 +173,39 @@
       <div id="clear-stats" style="font-size:16px; font-weight:700; margin-bottom:14px;"></div>
       <button class="btn" id="btn-next">다음 스테이지 ▶</button>
       <button class="btn ghost" id="btn-home">처음으로</button>
+    </div>
+  </div>
+
+  <!-- 마음의 폭풍 (최종 복습) -->
+  <div id="storm" class="ov hidden">
+    <div class="card">
+      <div class="storm-head">
+        <h2 style="font-size:22px;">⛈️ 마지막 관문 — 마음의 폭풍</h2>
+        <p class="sub">배운 마음 기술로 구름을 하나씩 걷어내자!</p>
+      </div>
+      <div id="storm-clouds"></div>
+      <div id="storm-q"></div>
+      <div id="storm-opts"></div>
+      <div id="storm-fb" class="hidden"></div>
+      <button class="btn hidden" id="storm-next">구름 걷어내기 ▶</button>
+    </div>
+  </div>
+
+  <!-- 수료증 -->
+  <div id="report" class="ov hidden">
+    <div class="card cert">
+      <div class="cert-title">🌈 마음 모험 수료증 🌈</div>
+      <div id="rep-who" class="cert-who"></div>
+      <div id="rep-date" class="cert-date"></div>
+      <div class="cert-skills">
+        ✅ 내 감정 알아차리기 &nbsp; ✅ 친구 마음에 공감하기<br>
+        ✅ 화는 멈춤과 숨 고르기로 &nbsp; ✅ 먼저 손 내미는 공동체
+      </div>
+      <div id="rep-stats" class="cert-stats"></div>
+      <div id="rep-rainbow" class="cert-rb hidden">🌈 숨겨진 무지개 보석 4개를 모두 찾은 진정한 마음 탐험가!</div>
+      <p class="cert-msg">네 가지 마음 기술을 모두 익혔습니다.<br>너의 마음 모험은 이제 진짜 시작! 💚</p>
+      <button class="btn" id="btn-save">이미지로 저장 📸</button>
+      <button class="btn ghost" id="btn-rep-home">처음으로</button>
     </div>
   </div>
 
@@ -176,6 +245,8 @@ const LEVELS = [
   pal: { sky1:"#aee7ff", sky2:"#eafbf2", ground:"#8a5a3b", grass:"#58c26a", hill:"#bfe9c8", hazard:null },
   gemEmojis: ["😊","😢","😡","😨","🥰"],
   clearEmoji: "🌱",
+  movers: [{ c: 100, r: 7, range: 3 }],
+  rainbow: { c: 100, r: 5 },
   clearMsg: "내 마음을 알아차리는 것이 모든 마음 공부의 시작이에요.<br>몸이 보내는 신호(두근거림, 땀, 답답함)는 감정의 안내판!",
   rows: (W => [
     "", "", "", "", "", "", "",
@@ -222,6 +293,41 @@ const LEVELS = [
       opts:["잠깐 멈춰서 '지금 몸이 어떻지? 무슨 일이 있었지?' 스스로 물어보기","기분 나쁜 채로 그냥 잊어버리기","남 탓할 사람부터 찾기"], ans:0,
       good:"훌륭해! 멈추고 스스로 물어보는 것, 그게 '마음 알아차림'의 시작이야. 감정 일기를 써 보는 것도 큰 도움이 돼. 💚",
       hint:"감정은 무시하면 더 커져서 돌아와. 제일 먼저 무엇을 해야 할까?"
+    },
+    {
+      emoji:"🐸", name:"개굴이",
+      q:"월요일 아침만 되면 배가 아픈 것 같아. 병원에선 아무 이상 없대. 왜 그럴까?",
+      opts:["학교 가기 부담스러운 마음이 몸으로 신호를 보내는 걸 수도 있어","꾀병이니까 무시해야 해","월요일엔 원래 다 아픈 거야"], ans:0,
+      good:"맞아! 마음과 몸은 연결되어 있어서, 말 못 한 감정이 배앓이나 두통으로 나타나기도 해. 그 마음을 알아주는 게 시작이야. 💚",
+      hint:"몸엔 이상이 없는데 '월요일 아침만' 아프다는 게 힌트야."
+    },
+    {
+      emoji:"🦆", name:"꽥꽥이",
+      q:"동생이 상 받는 걸 보는데 축하하고 싶으면서도 가슴 한쪽이 콕콕 쑤셔. 이 마음은 뭘까?",
+      opts:["부러움과 질투 — 누구에게나 오는 자연스러운 감정이야","나쁜 사람이라서 드는 마음","동생을 미워한다는 증거"], ans:0,
+      good:"그렇지! 질투는 누구에게나 찾아오는 자연스러운 감정이야. 알아차리고 인정하면 오히려 나를 움직이는 힘이 되기도 해. 💚",
+      hint:"이 감정이 든다고 나쁜 사람이 되는 걸까? 감정엔 잘못이 없어."
+    },
+    {
+      emoji:"🐭", name:"찍찍이",
+      q:"친구들 앞에서는 신나게 웃었는데 집에 오니까 갑자기 기운이 쭉 빠져. 왜 그럴까?",
+      opts:["에너지를 많이 써서 마음이 쉬고 싶다는 신호야","내가 이상해진 거야","친구들이 싫어진 거야"], ans:0,
+      good:"잘 봤어! 즐거운 시간도 에너지를 써. 혼자 조용히 쉬는 시간은 마음을 충전하는 소중한 시간이야. 💚",
+      hint:"신나게 논 다음 몸이 피곤한 것처럼, 마음도 그럴 수 있지 않을까?"
+    },
+    {
+      emoji:"🐝", name:"붕붕이",
+      q:"내일 시험인데 자꾸 딴생각이 나고 초조해. 이 초조함을 어떻게 다루면 좋을까?",
+      opts:["'내가 지금 초조하구나' 알아차리고 잠깐 스트레칭을 한다","초조함을 못 느낀 척 밤새 게임한다","나는 원래 안 되는 사람이라고 생각한다"], ans:0,
+      good:"좋아! 감정을 알아차리고 몸을 잠깐 움직여 주면 마음도 다시 자리를 잡아. 초조함은 '중요한 일이 있다'는 신호일 뿐이야. 💚",
+      hint:"초조함을 없애려고 하기 전에, 먼저 해야 할 일이 있어."
+    },
+    {
+      emoji:"🦝", name:"너구리",
+      q:"요즘 아무것도 하기 싫고 재미가 없어. 이럴 때 나에게 필요한 첫걸음은?",
+      opts:["믿을 수 있는 어른이나 친구에게 내 상태를 말해보기","아무한테도 말 안 하고 혼자 버티기","더 심해질 때까지 기다리기"], ans:0,
+      good:"용기 있는 선택이야! 마음이 무거울 땐 혼자 들지 않아도 돼. 말하는 순간 절반은 가벼워져. 💚",
+      hint:"무거운 짐은 혼자 들면 더 무거워져. 어떻게 하면 나눠 들 수 있을까?"
     }
   ]
 },
@@ -231,6 +337,8 @@ const LEVELS = [
   pal: { sky1:"#b9e9ca", sky2:"#ecfbf1", ground:"#6f4e37", grass:"#3fa860", hill:"#a5d8b5", hazard:null },
   gemEmojis: ["💛"],
   clearEmoji: "🤝",
+  movers: [{ c: 108, r: 7, range: 3 }],
+  rainbow: { c: 108, r: 5 },
   clearMsg: "공감은 해결책을 주는 게 아니라,<br>친구의 마음 옆에 가만히 앉아 주는 거예요.",
   rows: (W => [
     "", "", "", "", "",
@@ -279,6 +387,41 @@ const LEVELS = [
       opts:["먼저 \"많이 창피했겠다\" 하고 친구 마음을 알아준다","내 경험담이 위로가 되니까 길게 말해준다","\"그러게 연습 좀 하지\"라고 말해준다"], ans:0,
       good:"그렇지! 위로하려고 꺼낸 내 이야기가 때로는 친구의 마음을 가려 버려. 먼저 친구의 감정을 비춰 주는 게 진짜 공감이야. 💚",
       hint:"\"나는 더 심했어\"라고 하면 이야기의 주인공이 누구로 바뀔까?"
+    },
+    {
+      emoji:"🦢", name:"백조",
+      q:"새로 온 짝꿍이 우리말이 서툴러. 모둠 활동에서 어떻게 하면 좋을까?",
+      opts:["천천히 말해주고 그림이나 몸짓으로도 설명해준다","답답하니까 그냥 내가 다 한다","말이 안 통한다고 다른 애랑만 이야기한다"], ans:0,
+      good:"따뜻해! 속도를 맞춰주는 것도 공감이야. 언어보다 마음이 먼저 통하는 법이거든. 💚",
+      hint:"낯선 나라에서 내가 짝꿍이라면 어떤 도움이 고마울까?"
+    },
+    {
+      emoji:"🦩", name:"홍학이",
+      q:"친구가 우울하다며 한숨만 쉬어. 뭐라고 말을 걸어야 할지 모르겠어.",
+      opts:["\"무슨 일 있어? 이야기하고 싶으면 들어줄게\"라고 말한다","\"우울해하지 마! 파이팅!\"이라고 크게 외친다","기분이 나아질 때까지 모른 척한다"], ans:0,
+      good:"좋아! 들을 준비가 됐다고 알려주는 것만으로 친구에게는 문이 생겨. 말할지 말지는 친구가 정하면 돼. 💚",
+      hint:"억지로 기분을 끌어올리는 것보다 친구에게 지금 필요한 건 뭘까?"
+    },
+    {
+      emoji:"🐬", name:"도리",
+      q:"친구가 나한테 서운했다고 말했어. 나는 그럴 의도가 전혀 없었는데!",
+      opts:["\"그렇게 느꼈구나, 말해줘서 고마워\"라고 먼저 받아준다","\"네가 예민한 거야\"라고 바로잡는다","나도 서운했던 일 목록을 꺼낸다"], ans:0,
+      good:"성숙하다! 의도가 없었어도 상대의 감정은 진짜야. 감정을 먼저 받아주면 오해는 풀 수 있어. 💚",
+      hint:"내 의도를 설명하는 것과 친구의 마음을 알아주는 것, 뭐가 먼저일까?"
+    },
+    {
+      emoji:"🦜", name:"앵무",
+      q:"반 친구가 발표를 엄청 잘했어. 사실 나는 조금 샘도 나. 어떻게 할까?",
+      opts:["\"너 진짜 잘하더라!\"라고 진심으로 축하해준다","\"그 정도는 나도 해\"라고 말한다","아무 말도 안 한다"], ans:0,
+      good:"멋져! 샘나는 마음이 있어도 축하를 '선택'할 수 있어. 그게 마음의 근육이야. 💚",
+      hint:"축하 한마디가 그 친구와 나의 관계에 어떤 씨앗을 심을까?"
+    },
+    {
+      emoji:"🐳", name:"고래",
+      q:"단톡방에서 친구가 올린 글이 놀림감이 되고 있어. 웃긴 짤도 계속 올라와.",
+      opts:["\"그만하자, 본인은 속상할 것 같아\"라고 말해본다","재밌으니까 나도 짤을 만든다","좋아요만 조용히 누른다"], ans:0,
+      good:"용감해! 화면 뒤에도 마음이 있어. 한 사람의 '그만하자'가 방 전체의 분위기를 바꿀 수 있어. 💚",
+      hint:"그 글을 쓴 친구가 지금 이 방을 보고 있다면 어떤 기분일까?"
     }
   ]
 },
@@ -288,6 +431,8 @@ const LEVELS = [
   pal: { sky1:"#ffcf9e", sky2:"#ffe9d3", ground:"#6b5b64", grass:"#c96f53", hill:"#e6a284", hazard:"🔥", hazardMsg:"앗 뜨거! 괜찮아, 다시 가보자 💪" },
   gemEmojis: ["💧"],
   clearEmoji: "🧘",
+  movers: [{ c: 96, r: 9, range: 2.5 }],
+  rainbow: { c: 96, r: 6 },
   clearMsg: "화는 나쁜 감정이 아니에요. 다만 표현하는 방법이 중요할 뿐!<br>멈추고 → 숨 고르고 → 말로 표현하기, 기억해요.",
   rows: (W => [
     "", "", "", "", "", "", "",
@@ -334,6 +479,41 @@ const LEVELS = [
       opts:["빨리 찾아가서 \"아까 그 말은 미안해\"라고 사과한다","시간이 지나면 잊혀지니 모른 척한다","걔가 먼저 화나게 했으니 사과 안 한다"], ans:0,
       good:"용기 있다! 화는 누구나 나지만, 회복은 용기 있는 사람만 할 수 있어. 빠른 사과는 관계를 다시 이어 주는 다리야. 💚",
       hint:"심한 말은 시간이 지나도 마음에 남아 있어. 끊어진 다리를 다시 놓으려면 뭐가 필요할까?"
+    },
+    {
+      emoji:"🐺", name:"늑대",
+      q:"게임에서 지고 있는데 옆에서 동생이 자꾸 훈수를 둬. 폭발 직전이야!",
+      opts:["\"지금 나 집중하고 싶어. 이따 이야기하자\"라고 말한다","리모컨을 던진다","동생 방문을 발로 찬다"], ans:0,
+      good:"잘했어! 폭발하기 전에 내 상태를 '말'로 알려주는 것 — 이게 나-전달법의 핵심이야. 💚",
+      hint:"폭발하기 전에 상대에게 내 상태를 알려줄 방법은 없을까?"
+    },
+    {
+      emoji:"🦀", name:"꽃게",
+      q:"화가 나면 나도 모르게 주먹을 꽉 쥐고 어깨가 딱딱해져. 이걸 어떻게 풀지?",
+      opts:["몸의 신호를 알아차리고 어깨를 털며 크게 숨을 내쉰다","주먹을 더 세게 쥐고 참는다","벽을 친다"], ans:0,
+      good:"정확해! 화는 몸에 먼저 와. 몸을 풀어주면 마음의 온도도 내려가. 주먹 펴기, 어깨 털기, 긴 날숨 — 기억해! 💚",
+      hint:"몸이 먼저 화를 알려줬으니, 푸는 것도 몸부터 시작하면 어떨까?"
+    },
+    {
+      emoji:"🦖", name:"티노",
+      q:"친구가 계속 내 별명을 부르면서 놀려. 참았는데 오늘은 진짜 화가 나.",
+      opts:["진지한 얼굴로 \"그 별명 싫어. 그만 불러줘\"라고 분명히 말한다","더 심한 별명으로 되갚는다","화나는 걸 숨기고 계속 웃는다"], ans:0,
+      good:"훌륭해! 화를 존중하는 방법으로 표현하면 그건 '나를 지키는 힘'이 돼. 분명하게 말해도 괜찮아. 💚",
+      hint:"웃으면서 참으면 친구는 괜찮은 줄 알아. 어떻게 알려줘야 할까?"
+    },
+    {
+      emoji:"🐉", name:"미르",
+      q:"엄마한테 혼나고 너무 억울해. 방에 들어와서도 화가 안 가라앉아.",
+      opts:["감정을 종이에 쏟아 적고, 가라앉으면 다시 대화한다","문을 쾅 닫고 밤새 인터넷에 엄마 흉을 올린다","가출 계획을 세운다"], ans:0,
+      good:"지혜롭다! 안전한 방법으로 화를 배출한 다음 대화하면, 억울함도 제대로 전달할 수 있어. 💚",
+      hint:"화가 가득 찬 채로 하는 말과 가라앉은 뒤에 하는 말, 어떤 게 잘 전달될까?"
+    },
+    {
+      emoji:"🦅", name:"매리",
+      q:"요즘 사소한 일에도 짜증이 나. 화가 많아진 것 같아 걱정돼.",
+      opts:["잠·밥·운동 같은 기본 컨디션부터 점검하고, 계속되면 어른과 상의한다","원래 성격이 나쁜 거라고 포기한다","짜증나게 하는 애들을 전부 차단한다"], ans:0,
+      good:"똑똑해! 화가 잦아질 땐 몸의 배터리부터 점검하는 거야. 잠이 부족하면 마음의 브레이크도 약해지거든. 💚",
+      hint:"휴대폰도 배터리가 없으면 버벅대잖아. 내 몸은 어떨까?"
     }
   ]
 },
@@ -344,6 +524,8 @@ const LEVELS = [
          hazard:"⚡", hazardMsg:"찌릿! 괜찮아, 다시 가보자 💪", night:true },
   gemEmojis: ["⭐"],
   clearEmoji: "🌟",
+  movers: [{ c: 202, r: 7, range: 3 }],
+  rainbow: { c: 202, r: 4 },
   clearMsg: "공동체는 완벽한 사람들의 모임이 아니라,<br>서로를 포기하지 않는 사람들의 모임이에요.",
   rows: (W => [
     "", "", "", "", "", "", "",
@@ -390,9 +572,64 @@ const LEVELS = [
       opts:["\"나는 그건 좀 아닌 것 같아\"라고 말하고 들어가지 않는다","조용히 들어가서 구경만 한다","내가 방장을 하겠다고 한다"], ans:0,
       good:"단단하다! 은근한 따돌림에 \"나는 안 할래\"라고 말하는 한 사람이 공동체를 지켜. 온라인에서도 우리는 같은 교실이야. 💚",
       hint:"몰래 만든 방에서 일어나는 일이 빠진 친구에게 어떤 마음을 줄까?"
+    },
+    {
+      emoji:"🐔", name:"꼬꼬",
+      q:"청소 시간에 나만 열심히 하는 것 같아서 억울해.",
+      opts:["\"우리 구역 나눠서 같이 끝내자\"라고 제안한다","나도 안 해버린다","선생님께 전부 다 이른다"], ans:0,
+      good:"좋은 제안이야! 불공평함은 비난 대신 '규칙'을 바꾸는 제안으로 풀 수 있어. 그게 공동체의 지혜야. 💚",
+      hint:"모두가 참여하게 만드는 방법은 없을까? 역할이 분명하면 어때?"
+    },
+    {
+      emoji:"🦫", name:"비버",
+      q:"반 행사 준비에서 내가 하고 싶던 역할을 다른 친구가 맡게 됐어.",
+      opts:["아쉽지만 맡은 역할에서 최선을 다하고, 다음에 다시 도전한다","행사 준비에서 빠져버린다","그 친구가 실수하기를 바란다"], ans:0,
+      good:"어른스럽다! 공동체에선 모든 역할이 무대야. 맡은 자리에서 빛나는 사람이 결국 다음 기회를 얻어. 💚",
+      hint:"행사가 잘 되려면 지금 나에게 필요한 태도는 뭘까?"
+    },
+    {
+      emoji:"🐴", name:"말랑이",
+      q:"체육대회에서 우리 반이 졌는데, 실수한 친구를 애들이 탓하고 있어.",
+      opts:["\"누구든 실수할 수 있어. 우리 같이 잘 싸웠잖아\"라고 말한다","나도 같이 탓한다","조용히 자리를 뜬다"], ans:0,
+      good:"품이 넓다! 결과보다 사람을 지키는 말 한마디가 진짜 팀을 만들어. 💚",
+      hint:"다음 대회 때 그 친구가 주눅 들지 않으려면 지금 무엇이 필요할까?"
+    },
+    {
+      emoji:"🦘", name:"캥거",
+      q:"학교 규칙 중 하나가 불합리하다고 느껴져. 어떻게 하는 게 좋을까?",
+      opts:["학급회의나 건의함을 통해 의견을 정식으로 제안한다","그냥 규칙을 어긴다","뒤에서 불평만 한다"], ans:0,
+      good:"시민답다! 공동체를 바꾸는 힘은 불평이 아니라 '절차를 통한 목소리'에서 나와. 💚",
+      hint:"규칙을 바꾼 사람들은 어떤 방법을 썼을까?"
+    },
+    {
+      emoji:"🦭", name:"물개",
+      q:"봉사활동을 하러 갔는데 생각보다 힘들고 귀찮아.",
+      opts:["내 작은 수고가 누군가에겐 큰 도움이 된다는 걸 떠올려본다","대충 시간만 때운다","다음부턴 핑계를 대고 빠진다"], ans:0,
+      good:"그 마음이 공동체를 굴러가게 해! 도움은 받는 사람뿐 아니라 주는 사람의 마음도 자라게 해. 💚",
+      hint:"오늘 나의 한 시간이 누구의 하루를 바꿀 수 있을까?"
     }
   ]
 }
+];
+
+/* 마음의 폭풍 — 최종 복습 문제 (영역별 2개 중 1개 랜덤) */
+const REVIEW = [
+  [
+    { q:"발표 전에 심장이 쿵쿵 뛰고 손에 땀이 나. 이건 무슨 신호였지?", opts:["몸이 감정을 알려주는 신호 — 긴장하고 있구나!","심장에 병이 생겼다는 신호","아무 의미 없는 현상"], ans:0, good:"완벽해! 몸의 신호는 감정의 안내판이야." },
+    { q:"'짜증나' 뒤에 숨은 진짜 감정을 찾으려면 어떻게 해야 했지?", opts:["멈춰서 '무슨 일이 있었지? 진짜 마음은 뭐지?' 물어보기","더 크게 짜증 내기","그냥 잊어버리기"], ans:0, good:"그렇지! 감정에 정확한 이름을 붙이면 다루기 쉬워져." }
+  ],
+  [
+    { q:"친구가 고민을 이야기할 때 가장 먼저 해야 할 것은?", opts:["끝까지 들어주기","해결책부터 말해주기","내 이야기 시작하기"], ans:0, good:"맞아! 공감의 첫걸음은 고치기가 아니라 듣기야." },
+    { q:"속상해하는 친구의 마음에 공감하는 말은?", opts:["\"많이 힘들었겠다\"","\"그게 뭐가 힘들어\"","\"나는 더 심했어\""], ans:0, good:"정답! 친구의 감정을 비춰주는 말이 가장 큰 위로야." }
+  ],
+  [
+    { q:"화가 머리끝까지 났을 때 가장 먼저 할 행동은?", opts:["멈추고 심호흡 세 번 — 6초 법칙!","바로 소리 지르기","물건 던지기"], ans:0, good:"완벽해! 6초만 지나도 화의 파도는 한풀 꺾여." },
+    { q:"화를 건강하게 표현하는 방법은?", opts:["\"나 지금 화났어, 왜냐하면…\" 나-전달법으로 말하기","무조건 꾹 참기","SNS에 올려버리기"], ans:0, good:"그렇지! 감정은 인정하고, 표현은 존중하는 방법으로!" }
+  ],
+  [
+    { q:"혼자 밥 먹는 전학생을 봤다면 어떻게 해야 했지?", opts:["먼저 다가가서 말 걸기","모른 척하기","이상하다고 소문내기"], ans:0, good:"맞아! 공동체는 먼저 내미는 작은 손길에서 시작돼." },
+    { q:"누군가 놀림당하는 걸 봤을 때, 지켜보는 사람이 할 일은?", opts:["곁에 가서 말을 걸고 어른에게 알리기","웃으며 구경하기","빨리 지나가기"], ans:0, good:"용감해! 방관자가 움직이면 괴롭힘의 힘은 절반이 돼." }
+  ]
 ];
 
 const FINAL_MSG = "① 내 감정 알아차리기 ② 친구 마음에 공감하기 ③ 화는 멈춤과 숨 고르기로 ④ 먼저 손 내미는 공동체.<br>네 가지 마음 기술을 모두 익혔어요. 너의 마음 모험은 이제 진짜 시작! 💚";
@@ -403,7 +640,7 @@ const ctx = cvs.getContext("2d");
 let state = "title";          // title | play | dialog | clear
 let cur = 0;                  // 현재 레벨
 let lv = null;                // 파싱된 레벨
-let totalGems = 0, totalHearts = 0, maxGems = 0, maxHearts = 0;
+let totalGems = 0, totalHearts = 0, maxGems = 0, maxHearts = 0, totalRainbows = 0;
 let camX = 0, camY = ROWS * T - VH;
 let time = 0;
 
@@ -417,7 +654,6 @@ function parseLevel(i){
   const grid = [];
   const gems = [], npcs = [], hazards = [];
   let flag = null, spawn = { x: 80, y: 0 };
-  let npcIdx = 0;
 
   for (let r = 0; r < ROWS; r++){
     const row = (L.rows[r] || "").padEnd(L.width, ".");
@@ -427,12 +663,22 @@ function parseLevel(i){
       grid[r].push(ch === "#");
       if (ch === "g") gems.push({ c, r, got:false, e:L.gemEmojis[gems.length % L.gemEmojis.length] });
       else if (ch === "^") hazards.push({ c, r });
-      else if (ch === "N"){ npcs.push({ c, r, q:L.questions[npcIdx++], answered:false, touching:false }); }
+      else if (ch === "N"){ npcs.push({ c, r, q:null, answered:false, touching:false }); }
       else if (ch === "F") flag = { c, r };
       else if (ch === "P") spawn = { x: c*T + 6, y: (r+1)*T - player.h };
     }
   }
-  return { ...L, grid, gems, npcs, hazards, flag, spawn, pxW: L.width * T, gotCount: 0 };
+  // 질문 풀에서 NPC 수만큼 무작위 출제 (플레이할 때마다 다른 문제)
+  const pool = [...L.questions].sort(() => Math.random() - 0.5);
+  npcs.forEach((n, i) => n.q = pool[i % pool.length]);
+  // 움직이는 발판
+  const movers = (L.movers || []).map((m, i) => ({
+    cx: m.c * T + T/2, y: m.r * T, w: 80, h: 12,
+    range: (m.range || 2.5) * T, phase: i * 2.1 + m.c, x: undefined, dx: 0
+  }));
+  // 히든 무지개 보석
+  const rainbow = L.rainbow ? { c: L.rainbow.c, r: L.rainbow.r, got: false } : null;
+  return { ...L, grid, gems, npcs, hazards, flag, spawn, movers, rainbow, pxW: L.width * T, gotCount: 0 };
 }
 
 function solid(c, r){
@@ -462,14 +708,16 @@ function setKey(code, down){
 }
 window.addEventListener("keydown", e => {
   if (["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault();
-  if (state === "dialog"){
+  if (state === "dialog" || state === "storm"){
+    const boxSel = state === "dialog" ? "#dlg-opts .opt" : "#storm-opts .opt";
+    const nxId = state === "dialog" ? "dlg-next" : "storm-next";
     const n = { Digit1:0, Digit2:1, Digit3:2 }[e.code];
     if (n !== undefined){
-      const btns = [...document.querySelectorAll("#dlg-opts .opt")];
+      const btns = [...document.querySelectorAll(boxSel)];
       if (btns[n] && !btns[n].classList.contains("wrong")) btns[n].click();
     }
     if (e.code === "Enter" || e.code === "Space"){
-      const nx = document.getElementById("dlg-next");
+      const nx = document.getElementById(nxId);
       if (!nx.classList.contains("hidden")) nx.click();
     }
     return;
@@ -508,17 +756,24 @@ const sfx = {
   good: () => { [523,659,784,1046].forEach((f,i) => setTimeout(() => beep(f, 0.16, "triangle", 0.1), i*90)); },
   soft: () => beep(240, 0.22, "sine", 0.08),
   ouch: () => beep(180, 0.2, "sawtooth", 0.06),
-  flag: () => { [523,587,659,784,880,1046].forEach((f,i) => setTimeout(() => beep(f, 0.18, "triangle", 0.1), i*100)); }
+  flag: () => {
+    [523,587,659,784,880,1046].forEach((f,i) => setTimeout(() => beep(f, 0.18, "triangle", 0.1), i*100));
+    setTimeout(() => { beep(1046, 0.5, "triangle", 0.09); beep(1319, 0.5, "triangle", 0.07); beep(1568, 0.5, "triangle", 0.07); }, 650);
+  },
+  rainbow: () => [523,659,784,988,1319,1568].forEach((f,i) => setTimeout(() => beep(f, 0.15, "sine", 0.11), i*60))
 };
 
 /* ---------- 배경음악 (WebAudio 칩튠, 파일 없음) ---------- */
 const BGM = {
   on: (localStorage.getItem("mj-bgm") ?? "1") === "1",
   playing: false, step: 0, nextT: 0,
-  SPB: 60 / 112 / 2,                                 // 8분음표 길이 (112 BPM)
-  chords: [[0,4,7],[-5,-1,2],[-3,0,4],[-7,-3,0]],    // C → G → Am → F
-  arp: [0,1,2,1,2,1,0,1],                            // 아르페지오 패턴
-  transpose: [0, 2, -2, 3]                           // 스테이지별 조옮김
+  // 스테이지별 트랙: 코드진행·아르페지오·템포·음색이 모두 다름 (arp의 3 = 근음 한 옥타브 위)
+  tracks: [
+    { spb: 60/112/2, wave:"triangle", bassWave:"square",   chords:[[0,4,7],[-5,-1,2],[-3,0,4],[-7,-3,0]],   arp:[0,1,2,1,2,1,0,1] },  // 1단계: 밝은 C장조
+    { spb: 60/92/2,  wave:"sine",     bassWave:"triangle", chords:[[5,9,12],[0,4,7],[2,5,9],[-2,2,5]],      arp:[0,2,1,3,0,2,1,2] },  // 2단계: 포근한 F장조
+    { spb: 60/126/2, wave:"square",   bassWave:"square",   chords:[[-3,0,4],[-7,-3,0],[-5,-1,2],[-3,0,4]],  arp:[0,1,2,3,2,1,0,1] },  // 3단계: 긴장감 있는 단조
+    { spb: 60/84/2,  wave:"sine",     bassWave:"sine",     chords:[[-3,0,4],[-8,-5,0],[-5,-1,2],[-3,0,4]],  arp:[0,1,2,1,3,1,2,1] }   // 4단계: 고요한 밤
+  ]
 };
 function bgmNote(freq, t, dur, type, vol){
   const o = AC.createOscillator(), g = AC.createGain();
@@ -532,15 +787,16 @@ function bgmNote(freq, t, dur, type, vol){
 function bgmTick(){
   const a = ac();
   if (!a || !BGM.playing || !BGM.on || a.state !== "running") return;
+  const trk = BGM.tracks[cur % BGM.tracks.length];
   if (BGM.nextT < a.currentTime) BGM.nextT = a.currentTime + 0.05;
   while (BGM.nextT < a.currentTime + 1.2){            // 1.2초 미리 예약
-    const s = BGM.step, chord = BGM.chords[Math.floor(s / 8) % 4];
-    const tr = BGM.transpose[cur % BGM.transpose.length];
-    const mel = chord[BGM.arp[s % 8]];
-    bgmNote(523.25 * Math.pow(2, (mel + tr) / 12), BGM.nextT, BGM.SPB * 0.95, "triangle", 0.045);
+    const s = BGM.step, chord = trk.chords[Math.floor(s / 8) % 4];
+    const ai = trk.arp[s % 8];
+    const tone = ai === 3 ? chord[0] + 12 : chord[ai];
+    bgmNote(523.25 * Math.pow(2, tone / 12), BGM.nextT, trk.spb * 0.95, trk.wave, trk.wave === "square" ? 0.028 : 0.045);
     if (s % 4 === 0)
-      bgmNote(130.81 * Math.pow(2, (chord[0] + tr) / 12), BGM.nextT, BGM.SPB * 1.8, "square", 0.028);
-    BGM.nextT += BGM.SPB;
+      bgmNote(130.81 * Math.pow(2, chord[0] / 12), BGM.nextT, trk.spb * 1.8, trk.bassWave, 0.028);
+    BGM.nextT += trk.spb;
     BGM.step = (BGM.step + 1) % 32;
   }
 }
@@ -584,6 +840,12 @@ function rectOverlap(ax,ay,aw,ah,bx,by,bw,bh){
 
 function update(dt){
   const p = player;
+  // 움직이는 발판 위치 갱신
+  for (const m of lv.movers){
+    const nx = m.cx - m.w/2 + Math.sin(time * 1.2 + m.phase) * m.range;
+    m.dx = m.x === undefined ? 0 : Math.max(-4, Math.min(4, nx - m.x));
+    m.x = nx;
+  }
   p.vx = (keys.right ? SPEED : 0) - (keys.left ? SPEED : 0);
   if (p.vx > 0) p.face = 1; else if (p.vx < 0) p.face = -1;
 
@@ -606,6 +868,7 @@ function update(dt){
 
   // Y축 이동·충돌
   const wasAir = !p.onGround;
+  const preBottom = p.y + p.h;
   p.onGround = false;
   p.y += p.vy * dt;
   x0 = Math.floor(p.x / T); x1 = Math.floor((p.x + p.w - 0.01) / T);
@@ -616,6 +879,16 @@ function update(dt){
       else if (p.vy < 0){ p.y = (r+1)*T; p.vy = 0; }
     }
   }
+  // 움직이는 발판 착지 (위에서 떨어질 때만)
+  for (const m of lv.movers){
+    if (m.x === undefined || p.vy < 0) continue;
+    if (p.x + p.w > m.x + 4 && p.x < m.x + m.w - 4 &&
+        p.y + p.h >= m.y && preBottom <= m.y + 10){
+      p.y = m.y - p.h; p.vy = 0; p.onGround = true;
+      p.x += m.dx;   // 발판과 함께 이동
+    }
+  }
+
   if (p.onGround){ p.coyote = 0; if (wasAir) p.landT = 0.12; }
 
   // 추락
@@ -635,6 +908,16 @@ function update(dt){
       g.got = true; totalGems++; lv.gotCount++; sfx.gem();
       burst(g.c*T + 20, g.r*T + 20, "#ffd93d");
     }
+  }
+
+  // 히든 무지개 보석
+  if (lv.rainbow && !lv.rainbow.got &&
+      rectOverlap(p.x, p.y, p.w, p.h, lv.rainbow.c*T + 4, lv.rainbow.r*T + 4, 32, 32)){
+    lv.rainbow.got = true; totalRainbows++;
+    sfx.rainbow();
+    toast(`🌈 숨겨진 무지개 보석 발견! (${totalRainbows}/4)`);
+    burst(lv.rainbow.c*T + 20, lv.rainbow.r*T + 20, "#ff9ff3");
+    burst(lv.rainbow.c*T + 20, lv.rainbow.r*T + 20, "#74b9ff");
   }
 
   // NPC
@@ -726,16 +1009,115 @@ document.getElementById("dlg-next").onclick = () => {
 
 /* ---------- 클리어 ---------- */
 function stageClear(){
+  // 마지막 스테이지는 클리어 대신 '마음의 폭풍' 복습 관문으로
+  if (cur === LEVELS.length - 1){ startStorm(); return; }
   state = "clear"; sfx.flag();
-  const last = cur === LEVELS.length - 1;
-  document.getElementById("clear-title").textContent = last ? "🏆 모든 스테이지 클리어!" : "🚩 스테이지 클리어!";
-  document.getElementById("clear-emoji").textContent = last ? "🎉 🏆 🎉" : lv.clearEmoji;
-  document.getElementById("clear-msg").innerHTML = last ? FINAL_MSG : lv.clearMsg;
+  document.getElementById("clear-title").textContent = "🚩 스테이지 클리어!";
+  document.getElementById("clear-emoji").textContent = lv.clearEmoji;
+  document.getElementById("clear-msg").innerHTML = lv.clearMsg;
   document.getElementById("clear-stats").innerHTML =
-    `💎 감정 보석 ${totalGems}/${maxGems} &nbsp;·&nbsp; 💛 마음 하트 ${totalHearts}/${maxHearts}`;
-  document.getElementById("btn-next").classList.toggle("hidden", last);
+    `💎 감정 보석 ${totalGems}/${maxGems} &nbsp;·&nbsp; 💛 마음 하트 ${totalHearts}/${maxHearts}` +
+    (totalRainbows ? ` &nbsp;·&nbsp; 🌈 ${totalRainbows}` : "");
+  document.getElementById("btn-next").classList.remove("hidden");
   document.getElementById("clear").classList.remove("hidden");
 }
+
+/* ---------- 마음의 폭풍 (최종 복습 관문) ---------- */
+let stormQs = [], stormIdx = 0;
+function startStorm(){
+  state = "storm";
+  stormQs = REVIEW.map(pair => pair[Math.random() < 0.5 ? 0 : 1]);
+  stormIdx = 0;
+  document.getElementById("storm").classList.remove("hidden");
+  renderStorm();
+}
+function renderStorm(){
+  const clouds = document.getElementById("storm-clouds");
+  clouds.textContent = Array.from({ length: 4 }, (_, i) => i < stormIdx ? "🌤️" : "⛈️").join(" ");
+  const q = stormQs[stormIdx];
+  document.getElementById("storm-q").textContent = `구름 ${stormIdx + 1}/4 — ${q.q}`;
+  const fb = document.getElementById("storm-fb");
+  fb.className = "hidden"; fb.innerHTML = "";
+  document.getElementById("storm-next").classList.add("hidden");
+  const order = q.opts.map((_, i) => i).sort(() => Math.random() - 0.5);
+  const box = document.getElementById("storm-opts");
+  box.innerHTML = "";
+  order.forEach((oi, vi) => {
+    const b = document.createElement("button");
+    b.className = "opt";
+    b.textContent = `${vi + 1}. ${q.opts[oi]}`;
+    b.onclick = () => {
+      if (oi === q.ans){
+        fb.className = "good"; fb.innerHTML = "💚 " + q.good;
+        box.querySelectorAll(".opt").forEach(x => x.classList.add("wrong"));
+        b.classList.remove("wrong");
+        document.getElementById("storm-next").classList.remove("hidden");
+        sfx.good();
+      } else { b.classList.add("wrong"); sfx.soft(); }
+    };
+    box.appendChild(b);
+  });
+}
+document.getElementById("storm-next").onclick = () => {
+  stormIdx++;
+  if (stormIdx >= 4){
+    document.getElementById("storm").classList.add("hidden");
+    showReport();
+  } else { sfx.gem(); renderStorm(); }
+};
+
+/* ---------- 수료증 ---------- */
+function showReport(){
+  state = "report"; sfx.flag();
+  const name = (localStorage.getItem("mj-name") || "").trim();
+  const cls = (localStorage.getItem("mj-class") || "").trim();
+  document.getElementById("rep-who").textContent = (cls || name) ? `${cls} ${name}`.trim() : "이름 없는 모험가";
+  const d = new Date();
+  document.getElementById("rep-date").textContent = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 · 명지중학교 SEL`;
+  document.getElementById("rep-stats").innerHTML =
+    `💎 ${totalGems}/${maxGems} · 💛 ${totalHearts}/${maxHearts} · 🌈 ${totalRainbows}/4`;
+  document.getElementById("rep-rainbow").classList.toggle("hidden", totalRainbows < 4);
+  document.getElementById("report").classList.remove("hidden");
+}
+document.getElementById("btn-rep-home").onclick = () => {
+  document.getElementById("report").classList.add("hidden");
+  document.getElementById("title").classList.remove("hidden");
+  state = "title";
+  bgmStop();
+};
+document.getElementById("btn-save").onclick = () => {
+  const c = document.createElement("canvas");
+  c.width = 1000; c.height = 700;
+  const x = c.getContext("2d");
+  x.fillStyle = "#fffdf6"; x.fillRect(0, 0, 1000, 700);
+  x.strokeStyle = "#3FE5A0"; x.lineWidth = 10; x.strokeRect(20, 20, 960, 660);
+  x.strokeStyle = "#d9f7ea"; x.lineWidth = 3; x.strokeRect(38, 38, 924, 624);
+  x.textAlign = "center"; x.fillStyle = "#222";
+  x.font = "44px 'Jua', sans-serif";
+  x.fillText("🌈 마음 모험 수료증 🌈", 500, 110);
+  x.fillStyle = "#0b6b45"; x.font = "38px 'Jua', sans-serif";
+  x.fillText(document.getElementById("rep-who").textContent, 500, 185);
+  x.fillStyle = "#889"; x.font = "20px 'Jua', sans-serif";
+  x.fillText(document.getElementById("rep-date").textContent, 500, 225);
+  x.fillStyle = "#333"; x.font = "27px 'Jua', sans-serif";
+  x.fillText("✅ 내 감정 알아차리기      ✅ 친구 마음에 공감하기", 500, 305);
+  x.fillText("✅ 화는 멈춤과 숨 고르기로   ✅ 먼저 손 내미는 공동체", 500, 355);
+  x.font = "30px 'Jua', sans-serif";
+  x.fillText(document.getElementById("rep-stats").textContent, 500, 440);
+  if (totalRainbows >= 4){
+    x.fillStyle = "#b3541e"; x.font = "24px 'Jua', sans-serif";
+    x.fillText("🌈 숨겨진 무지개 보석 4개를 모두 찾은 진정한 마음 탐험가!", 500, 495);
+  }
+  x.fillStyle = "#556"; x.font = "24px 'Jua', sans-serif";
+  x.fillText("네 가지 마음 기술을 모두 익혔습니다. 너의 마음 모험은 이제 진짜 시작! 💚", 500, 570);
+  x.fillStyle = "#99a"; x.font = "18px 'Jua', sans-serif";
+  x.fillText("마음 점프! Mind Jump — 명지중학교 사회정서교육", 500, 630);
+  const a = document.createElement("a");
+  const who = (localStorage.getItem("mj-class") || "") + "_" + (localStorage.getItem("mj-name") || "모험가");
+  a.download = `마음점프_수료증_${who}.png`;
+  a.href = c.toDataURL("image/png");
+  a.click();
+};
 document.getElementById("btn-next").onclick = () => {
   document.getElementById("clear").classList.add("hidden");
   loadLevel(cur + 1); state = "play";
@@ -749,13 +1131,17 @@ document.getElementById("btn-home").onclick = () => {
 
 /* ---------- 시작 ---------- */
 function startGame(levelIdx){
-  totalGems = 0; totalHearts = 0;
-  // 시작한 스테이지부터 끝까지의 보석·질문 수를 목표로
+  totalGems = 0; totalHearts = 0; totalRainbows = 0;
+  // 시작한 스테이지부터 끝까지의 보석·친구 수를 목표로
   maxGems = 0; maxHearts = 0;
   for (let i = levelIdx; i < LEVELS.length; i++){
-    maxGems += parseLevel(i).gems.length;
-    maxHearts += LEVELS[i].questions.length;
+    const pl = parseLevel(i);
+    maxGems += pl.gems.length;
+    maxHearts += pl.npcs.length;
   }
+  // 이름·반 저장 (수료증에 사용)
+  localStorage.setItem("mj-class", document.getElementById("in-class").value.trim());
+  localStorage.setItem("mj-name", document.getElementById("in-name").value.trim());
   document.getElementById("title").classList.add("hidden");
   loadLevel(levelIdx); state = "play";
   bgmStart();
@@ -854,6 +1240,26 @@ function draw(){
     if (g.got) continue;
     const bob = Math.sin(time*3 + g.c * 0.8) * 4;
     ctx.fillText(g.e, g.c*T + T/2, g.r*T + T/2 + bob);
+  }
+
+  // 움직이는 발판
+  for (const m of (L.movers || [])){
+    const mx = m.x !== undefined ? m.x : m.cx - m.w/2 + Math.sin(time*1.2 + m.phase) * m.range;
+    ctx.fillStyle = L.pal.grass;
+    ctx.strokeStyle = "rgba(0,0,0,.25)"; ctx.lineWidth = 2;
+    roundRect(mx, m.y, m.w, m.h, 6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    ctx.fillRect(mx + 8, m.y + 4, 7, 3);
+    ctx.fillRect(mx + m.w - 15, m.y + 4, 7, 3);
+  }
+
+  // 히든 무지개 보석
+  if (L.rainbow && !L.rainbow.got){
+    const bob = Math.sin(time*3) * 5;
+    ctx.font = "28px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.globalAlpha = 0.8 + Math.sin(time*5) * 0.2;
+    ctx.fillText("🌈", L.rainbow.c*T + T/2, L.rainbow.r*T + T/2 + bob);
+    ctx.globalAlpha = 1;
   }
 
   // NPC
@@ -991,6 +1397,14 @@ function frame(now){
 }
 lv = parseLevel(0);
 requestAnimationFrame(frame);
+
+// 이름·반 입력 복원
+document.getElementById("in-class").value = localStorage.getItem("mj-class") || "";
+document.getElementById("in-name").value = localStorage.getItem("mj-name") || "";
+
+// PWA 서비스워커 (배포 환경에서만)
+if ("serviceWorker" in navigator && location.protocol === "https:")
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
 
 // 디버그/검증용
 window.__game = {
