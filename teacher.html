@@ -115,16 +115,25 @@ document.getElementById("btn-new").onclick = () => {
   document.getElementById("code").value = c;
 };
 
-let unsub = null;
+let unsub = null, gotSnap = false;
+function listen(code, attempt){
+  if (unsub){ try { unsub(); } catch(e){} }
+  gotSnap = false;
+  unsub = db.collection("rooms").doc(code).collection("students")
+    .onSnapshot(
+      snap => { gotSnap = true; render(snap); },
+      () => { if (attempt < 6) setTimeout(() => listen(code, attempt + 1), 1500); }
+    );
+  // 첫 스냅샷이 3초 안에 안 오면 리스너 재부착 (연결 초기화 꼬임 대비)
+  setTimeout(() => { if (!gotSnap && attempt < 6) listen(code, attempt + 1); }, 3000);
+}
 function startLive(code){
   document.getElementById("setup").classList.add("hidden");
   document.getElementById("live").classList.remove("hidden");
   document.getElementById("code-big").textContent = code;
   document.getElementById("qr").src =
     "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(GAME_URL + "?room=" + code);
-  if (unsub) unsub();
-  unsub = db.collection("rooms").doc(code).collection("students")
-    .onSnapshot(snap => render(snap), () => {});
+  listen(code, 0);
 }
 
 const stageInfo = s =>
