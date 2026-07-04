@@ -162,9 +162,13 @@ function render(snap){
   rows.sort((a, b) => (a.cls || "").localeCompare(b.cls || "") || (a.name || "").localeCompare(b.name || ""));
 
   const doneN = rows.filter(r => r.state === "done").length;
+  const scored = rows.filter(r => typeof r.mind === "number");
+  const avgMind = scored.length ? Math.round(scored.reduce((s, r) => s + r.mind, 0) / scored.length) : null;
   document.getElementById("summary").innerHTML =
     `참여 <b>${rows.length}</b>명 · 완주 <b>${doneN}</b>명<br>` +
-    `<span style="font-size:13px;color:#9aa5b3;">💛 금하트 합계 ${rows.reduce((s, r) => s + (r.gold || 0), 0)} · 하트 합계 ${rows.reduce((s, r) => s + (r.hearts || 0), 0)}</span>`;
+    `<span style="font-size:13px;color:#9aa5b3;">` +
+    (avgMind !== null ? `💛 마음 점수 평균 ${avgMind}/60 · ` : "") +
+    `🛡️ 무사통과 합계 ${rows.reduce((s, r) => s + (r.shields || 0), 0)}</span>`;
 
   // 영역별 첫 시도 정답률 (반 전체) — 가장 낮은 영역은 수업에서 다룰 주제
   const dn = ["① 감정 알아차리기", "② 공감", "③ 화 다스리기", "④ 공동체"];
@@ -200,7 +204,7 @@ function render(snap){
       `<div class="who">${r.name || "?"} <small>${r.cls || ""}</small></div>` +
       `<div class="st">${info.txt}</div>` +
       `<div class="bar"><i style="width:${pct}%"></i></div>` +
-      `<div class="nums">💛 ${r.gold || 0} 🤍 ${(r.hearts || 0) - (r.gold || 0)} · 💎 ${r.gems || 0} · 🌈 ${r.rainbows || 0}</div>`;
+      `<div class="nums">💛${r.gold || 0} 🤍${r.silver || 0} 🤎${r.bronze || 0} · 🛡️${r.shields || 0} · 💎${r.gems || 0} · 🌈${r.rainbows || 0}</div>`;
     grid.appendChild(card);
     setTimeout(() => card.classList.remove("fresh"), 600);
   }
