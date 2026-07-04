@@ -83,9 +83,15 @@
 
   /* 대화창 */
   #dlg .card{ text-align:left; max-width:640px; }
-  #dlg-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-  #dlg-emoji{ font-size:34px; }
-  #dlg-name{ font-size:16px; }
+  #dlg-head{ display:flex; align-items:center; gap:14px; margin-bottom:10px; }
+  #dlg-portrait{
+    width:78px; height:78px; border-radius:50%; flex:none;
+    background:#eef7f2 center/cover no-repeat; border:3px solid #cdeede;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 3px 8px rgba(0,0,0,.08);
+  }
+  #dlg-emoji{ font-size:46px; line-height:1; }
+  #dlg-name{ font-size:19px; }
   #dlg-q{ font-size:16px; line-height:1.65; background:#f4f8f6; border-radius:12px; padding:12px 14px; margin-bottom:12px; }
   .opt{
     display:block; width:100%; text-align:left; cursor:pointer; font-family:inherit;
@@ -159,7 +165,7 @@
   <!-- 대화 -->
   <div id="dlg" class="ov bottom hidden">
     <div class="card">
-      <div id="dlg-head"><span id="dlg-emoji">🐰</span><b id="dlg-name">두근이</b></div>
+      <div id="dlg-head"><div id="dlg-portrait"><span id="dlg-emoji">🐰</span></div><b id="dlg-name">두근이</b></div>
       <div id="dlg-q"></div>
       <div id="dlg-opts"></div>
       <div id="dlg-fb" class="hidden"></div>
@@ -247,7 +253,7 @@ const LEVELS = [
 {
   name: "1단계 · 감정 알아차리기",
   width: 210,
-  pal: { sky1:"#aee7ff", sky2:"#eafbf2", ground:"#8a5a3b", grass:"#58c26a", hill:"#bfe9c8", hazard:null },
+  pal: { sky1:"#aee7ff", sky2:"#eafbf2", ground:"#8a5a3b", grass:"#58c26a", hill:"#bfe9c8", hazard:null, deco:["🌼","🌷","🍄","🌱"] },
   gemEmojis: ["😊","😢","😡","😨","🥰"],
   clearEmoji: "🌱",
   movers: [{ c: 100, r: 7, range: 3 }],
@@ -339,7 +345,7 @@ const LEVELS = [
 {
   name: "2단계 · 친구 마음 공감",
   width: 210,
-  pal: { sky1:"#b9e9ca", sky2:"#ecfbf1", ground:"#6f4e37", grass:"#3fa860", hill:"#a5d8b5", hazard:null },
+  pal: { sky1:"#b9e9ca", sky2:"#ecfbf1", ground:"#6f4e37", grass:"#3fa860", hill:"#a5d8b5", hazard:null, deco:["🌿","🌸","🍄","🪻"] },
   gemEmojis: ["💛"],
   clearEmoji: "🤝",
   movers: [{ c: 108, r: 7, range: 3 }],
@@ -433,7 +439,7 @@ const LEVELS = [
 {
   name: "3단계 · 화 다스리기",
   width: 210,
-  pal: { sky1:"#ffcf9e", sky2:"#ffe9d3", ground:"#6b5b64", grass:"#c96f53", hill:"#e6a284", hazard:"🔥", hazardMsg:"앗 뜨거! 괜찮아, 다시 가보자 💪" },
+  pal: { sky1:"#ffcf9e", sky2:"#ffe9d3", ground:"#6b5b64", grass:"#c96f53", hill:"#e6a284", hazard:"🔥", hazardMsg:"앗 뜨거! 괜찮아, 다시 가보자 💪", deco:["🪨","🌾","🍂"] },
   gemEmojis: ["💧"],
   clearEmoji: "🧘",
   movers: [{ c: 96, r: 9, range: 2.5 }],
@@ -526,7 +532,7 @@ const LEVELS = [
   name: "4단계 · 함께하는 공동체",
   width: 210,
   pal: { sky1:"#33406e", sky2:"#8b9ee0", ground:"#5d5470", grass:"#9d8fd8", hill:"#5a6aa8",
-         hazard:"⚡", hazardMsg:"찌릿! 괜찮아, 다시 가보자 💪", night:true },
+         hazard:"⚡", hazardMsg:"찌릿! 괜찮아, 다시 가보자 💪", night:true, deco:["🏮","🪻","🌾"] },
   gemEmojis: ["⭐"],
   clearEmoji: "🌟",
   movers: [{ c: 202, r: 7, range: 3 }],
@@ -687,7 +693,21 @@ function parseLevel(i){
   }));
   // 히든 무지개 보석
   const rainbow = L.rainbow ? { c: L.rainbow.c, r: L.rainbow.r, got: false } : null;
-  return { ...L, grid, gems, npcs, hazards, flag, spawn, movers, rainbow, pxW: L.width * T, gotCount: 0 };
+  // 배경 데코 (지면 위 꽃·풀 — 열 해시로 결정적 배치, 엔티티 자리는 피함)
+  const decos = [];
+  const DSET = L.pal.deco || ["🌼"];
+  for (let c = 0; c < L.width; c++){
+    for (let r = 1; r < ROWS; r++){
+      if (grid[r][c] && !grid[r-1][c]){
+        const h = (c * 2654435761 >>> 0) % 100;
+        const above = (L.rows[r-1] || "").padEnd(L.width, ".")[c];
+        if (h < 22 && above === ".")
+          decos.push({ x: c*T + 6 + h % 28, y: r*T - 9, e: DSET[h % DSET.length], s: 15 + h % 9 });
+        break;
+      }
+    }
+  }
+  return { ...L, grid, gems, npcs, hazards, flag, spawn, movers, rainbow, decos, pxW: L.width * T, gotCount: 0 };
 }
 
 function solid(c, r){
@@ -842,6 +862,13 @@ function burst(x, y, color){
     particles.push({ x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp - 80, life:0.6, color });
   }
 }
+function dust(x, y, n = 5){
+  for (let i = 0; i < n; i++){
+    const a = -Math.PI/2 + (Math.random() - 0.5) * 2.4, sp = 30 + Math.random() * 60;
+    particles.push({ x: x + (Math.random() - 0.5) * 18, y: y - 2,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.4 - 30, life: 0.35, color: "rgba(255,255,255,.75)" });
+  }
+}
 
 /* ---------- 물리 ---------- */
 function rectOverlap(ax,ay,aw,ah,bx,by,bw,bh){
@@ -860,8 +887,16 @@ function update(dt){
   if (p.vx > 0) p.face = 1; else if (p.vx < 0) p.face = -1;
 
   p.coyote += dt; p.jbuf += dt; p.landT = Math.max(0, p.landT - dt);
+  p.hurtT = Math.max(0, (p.hurtT || 0) - dt);
   if (p.jbuf < 0.12 && p.coyote < 0.09){
     p.vy = -JUMP_V; p.jbuf = 9; p.coyote = 9; p.onGround = false; sfx.jump();
+    dust(p.x + p.w/2, p.y + p.h, 6);                    // 점프 먼지
+  }
+  // 달리기 먼지
+  p.puffT = (p.puffT || 0) - dt;
+  if (p.onGround && Math.abs(p.vx) > 1 && p.puffT <= 0){
+    p.puffT = 0.16;
+    dust(p.x + (p.face > 0 ? 2 : p.w - 2), p.y + p.h, 2);
   }
   p.vy = Math.min(p.vy + GRAV * dt, 1200);
 
@@ -899,7 +934,10 @@ function update(dt){
     }
   }
 
-  if (p.onGround){ p.coyote = 0; if (wasAir) p.landT = 0.12; }
+  if (p.onGround){
+    p.coyote = 0;
+    if (wasAir){ p.landT = 0.12; dust(p.x + p.w/2, p.y + p.h, 8); }   // 착지 먼지
+  }
 
   // 추락
   if (p.y > ROWS * T + 120) respawn("괜찮아! 다시 도전해 보자 💪");
@@ -961,7 +999,7 @@ function update(dt){
 }
 
 function respawn(msg, countDeath = true){
-  if (countDeath){ stageDeaths++; totalDeaths++; }   // R키 수동 재시작은 세지 않음
+  if (countDeath){ stageDeaths++; totalDeaths++; player.hurtT = 1.1; }   // R키 수동 재시작은 세지 않음
   sfx.ouch();
   Object.assign(player, { x: lv.spawn.x, y: lv.spawn.y, vx:0, vy:0 });
   toast(msg);
@@ -1025,6 +1063,10 @@ document.getElementById("dlg-next").onclick = () => {
   if (lv.npcs.every(n => n.answered)){
     toast("🚩 모든 친구의 고민 해결! 깃발이 열렸어!");
     sfx.flag();
+    // 깃발 무지개 파동
+    if (lv.flag)
+      ["#ff6b6b","#feca57","#48dbfb","#1dd1a1","#f368e0"].forEach(cl =>
+        burst(lv.flag.c*T + 20, (lv.flag.r+1)*T - 80, cl));
   } else {
     toast("📍 체크포인트! 이제 여기서 다시 시작해");
   }
@@ -1203,6 +1245,37 @@ function startGame(levelIdx){
 document.getElementById("btn-start").onclick = () => startGame(0);
 document.querySelectorAll(".lvl").forEach(b => b.onclick = () => startGame(+b.dataset.l));
 
+/* ---------- 픽셀아트 타일셋 (코드 생성 — 외부 이미지 없음) ---------- */
+function shade(hex, f){
+  const n = parseInt(hex.slice(1), 16);
+  const ch = i => Math.max(0, Math.min(255, Math.round(((n >> i) & 255) * f)));
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+// 10x10 논리픽셀(4px 블록) 얼룩 좌표 — 모든 타일 공통 패턴
+const SPECK = [[1,2],[4,1],[7,3],[2,5],[6,6],[8,8],[3,7],[5,4],[0,8],[9,5],[2,0],[7,9]];
+function makeTileset(pal){
+  const mk = fn => { const c = document.createElement("canvas"); c.width = c.height = 40; fn(c.getContext("2d")); return c; };
+  const fill = mk(x => {
+    x.fillStyle = pal.ground; x.fillRect(0, 0, 40, 40);
+    x.fillStyle = shade(pal.ground, 0.8);
+    SPECK.forEach(([a, b], i) => { if (i % 2) x.fillRect(a*4, b*4, 4, 4); });
+    x.fillStyle = shade(pal.ground, 1.18);
+    SPECK.forEach(([a, b], i) => { if (i % 2 === 0) x.fillRect(((a+3)%10)*4, ((b+5)%10)*4, 4, 4); });
+    x.fillStyle = shade(pal.ground, 0.72);
+    x.fillRect(0, 36, 40, 4);
+  });
+  const top = mk(x => {
+    x.drawImage(fill, 0, 0);
+    x.fillStyle = shade(pal.grass, 1.2); x.fillRect(0, 0, 40, 4);   // 잔디 하이라이트
+    x.fillStyle = pal.grass; x.fillRect(0, 4, 40, 8);               // 잔디 본체
+    x.fillStyle = shade(pal.grass, 0.82);                           // 톱니 아랫단
+    [0, 3, 6, 9].forEach(cx => x.fillRect(cx*4, 12, 4, 4));
+    x.fillStyle = pal.grass;
+    [2, 5, 8].forEach(cx => x.fillRect(cx*4, 12, 4, 4));
+  });
+  return { fill, top };
+}
+
 /* ---------- 그리기 ---------- */
 function roundRect(x, y, w, h, r){
   ctx.beginPath();
@@ -1251,20 +1324,23 @@ function draw(){
   ctx.save();
   ctx.translate(-Math.round(camX), -Math.round(camY));
 
-  // 타일
+  // 타일 (픽셀아트 타일셋, 레벨당 1회 생성 후 캐시)
+  if (!L.tileset) L.tileset = makeTileset(L.pal);
   const c0 = Math.floor(camX / T), c1 = Math.min(L.width - 1, Math.ceil((camX + VW) / T));
   for (let r = 0; r < ROWS; r++){
     for (let c = c0; c <= c1; c++){
       if (!L.grid[r][c]) continue;
-      const x = c*T, y = r*T;
-      ctx.fillStyle = L.pal.ground;
-      ctx.fillRect(x, y, T, T);
-      ctx.strokeStyle = "rgba(0,0,0,.12)"; ctx.strokeRect(x+0.5, y+0.5, T-1, T-1);
-      if (r === 0 || !L.grid[r-1][c]){       // 윗면 잔디
-        ctx.fillStyle = L.pal.grass;
-        roundRect(x, y-3, T, 12, 4); ctx.fill();
-      }
+      const isTop = r === 0 || !L.grid[r-1][c];
+      ctx.drawImage(isTop ? L.tileset.top : L.tileset.fill, c*T, r*T);
     }
+  }
+
+  // 배경 데코 (꽃·풀·등불)
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const d of (L.decos || [])){
+    if (d.x < camX - 40 || d.x > camX + VW + 40) continue;
+    ctx.font = d.s + "px sans-serif";
+    ctx.fillText(d.e, d.x, d.y);
   }
 
   ctx.font = "26px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -1381,19 +1457,33 @@ function draw(){
   ctx.beginPath(); ctx.ellipse(-5, -8, 5.5, 3.2, -0.5, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(5, -8, 5.5, 3.2, 0.5, 0, Math.PI*2); ctx.fill();
   ctx.restore();
-  // 눈 (깜빡임 + 반짝 하이라이트)
-  const blink = (time % 3.4) < 0.12 || p.landT > 0.06;
-  if (blink){
-    ctx.strokeStyle = "#1d3529"; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+  // 표정 (상태에 따라 변화: 다침/점프/낙하/달리기/경청/기본)
+  const mood = (p.hurtT || 0) > 0 ? "hurt"
+             : state === "dialog" ? "listen"
+             : !p.onGround ? (p.vy < 0 ? "jump" : "fall")
+             : Math.abs(p.vx) > 1 ? "run" : "idle";
+  const blink = (mood === "idle" && (time % 3.4) < 0.12) || p.landT > 0.06;
+  ctx.strokeStyle = "#1d3529"; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+  if (mood === "hurt"){
+    // >< 눈 + 삐뚤 입 + 어질 표시
+    ctx.beginPath();
+    ctx.moveTo(-9 + ex, -25); ctx.lineTo(-3 + ex, -19);
+    ctx.moveTo(-3 + ex, -25); ctx.lineTo(-9 + ex, -19);
+    ctx.moveTo(3 + ex, -25); ctx.lineTo(9 + ex, -19);
+    ctx.moveTo(9 + ex, -25); ctx.lineTo(3 + ex, -19);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(ex, -12, 3.2, 1.15*Math.PI, 1.85*Math.PI); ctx.stroke();
+  } else if (blink){
     ctx.beginPath();
     ctx.moveTo(-9 + ex, -22); ctx.lineTo(-3 + ex, -22);
     ctx.moveTo(3 + ex, -22); ctx.lineTo(9 + ex, -22);
     ctx.stroke();
   } else {
+    const ry = mood === "jump" ? 6 : mood === "fall" ? 6.6 : 5;
     ctx.fillStyle = "#1d3529";
     ctx.beginPath();
-    ctx.ellipse(-6 + ex, -22, 4, p.onGround ? 5 : 6, 0, 0, Math.PI*2);
-    ctx.ellipse(6 + ex, -22, 4, p.onGround ? 5 : 6, 0, 0, Math.PI*2);
+    ctx.ellipse(-6 + ex, -22, 4, ry, 0, 0, Math.PI*2);
+    ctx.ellipse(6 + ex, -22, 4, ry, 0, 0, Math.PI*2);
     ctx.fill();
     ctx.fillStyle = "#fff";
     ctx.beginPath();
@@ -1401,14 +1491,30 @@ function draw(){
     ctx.arc(4.7 + ex, -24, 1.6, 0, Math.PI*2);
     ctx.fill();
   }
-  // 볼터치 + 방긋 입
+  // 볼터치
   ctx.fillStyle = "rgba(255,130,150,.45)";
   ctx.beginPath();
   ctx.ellipse(-11.5 + ex*0.5, -14, 3.4, 2.2, 0, 0, Math.PI*2);
   ctx.ellipse(11.5 + ex*0.5, -14, 3.4, 2.2, 0, 0, Math.PI*2);
   ctx.fill();
-  ctx.strokeStyle = "#1d3529"; ctx.lineWidth = 2; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.arc(ex, -16.5, 3.5, 0.15*Math.PI, 0.85*Math.PI); ctx.stroke();
+  // 입 (기분별)
+  if (mood !== "hurt"){
+    ctx.strokeStyle = "#1d3529"; ctx.lineWidth = 2;
+    if (mood === "jump" || mood === "fall"){
+      // 'o' 입 (신남/놀람)
+      ctx.fillStyle = "#1d3529";
+      ctx.beginPath();
+      ctx.ellipse(ex, -15, mood === "fall" ? 3.4 : 2.6, mood === "fall" ? 4 : 3.2, 0, 0, Math.PI*2);
+      ctx.fill();
+    } else if (mood === "run"){
+      // 활짝 웃음
+      ctx.fillStyle = "#1d3529";
+      ctx.beginPath(); ctx.arc(ex, -17, 5, 0.1*Math.PI, 0.9*Math.PI); ctx.closePath(); ctx.fill();
+    } else {
+      // 방긋
+      ctx.beginPath(); ctx.arc(ex, -16.5, 3.5, 0.15*Math.PI, 0.85*Math.PI); ctx.stroke();
+    }
+  }
   ctx.restore();
 
   // 파티클
