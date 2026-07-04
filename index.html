@@ -1013,9 +1013,26 @@ function respawn(msg, countDeath = true){
 /* ---------- 대화 ---------- */
 // AI 일러스트 초상 (없는 캐릭터는 이모지로 표시) — npc/ 폴더에 추가 후 여기 매핑
 const PORTRAITS = {
-  "두근이": "rabbit.png",
-  "아옹이": "tiger.png",
-  "펭펭": "penguin.png"
+  // 1단계 · 감정 알아차리기
+  "두근이": "rabbit.png",   "나비": "butterfly.png", "곰곰이": "bear.png",
+  "다람이": "squirrel.png", "몽글이": "octopus.png", "개굴이": "frog.png",
+  "꽥꽥이": "duck.png",     "찍찍이": "mouse.png",   "붕붕이": "bee.png",
+  "너구리": "raccoon.png",
+  // 2단계 · 친구 마음 공감
+  "여우비": "fox.png",      "야옹이": "cat.png",     "멍멍이": "dog.png",
+  "토토": "turtle.png",     "폴리": "sheep.png",     "백조": "swan.png",
+  "홍학이": "flamingo.png", "도리": "dolphin.png",   "앵무": "parrot.png",
+  "고래": "whale.png",
+  // 3단계 · 화 다스리기
+  "아옹이": "tiger.png",    "부엉이": "owl.png",     "코코": "koala.png",
+  "삐약이": "chick.png",    "고슴이": "hedgehog.png","늑대": "wolf.png",
+  "꽃게": "crab.png",       "티노": "trex.png",      "미르": "dragon.png",
+  "매리": "eagle.png",
+  // 4단계 · 함께하는 공동체
+  "펭펭": "penguin.png",    "무무": "cow.png",       "햄톨": "hamster.png",
+  "라온이": "lion.png",     "코리": "elephant.png",  "꼬꼬": "hen.png",
+  "비버": "beaver.png",     "말랑이": "pony.png",    "캥거": "kangaroo.png",
+  "물개": "seal.png"
 };
 let curNpc = null;
 function openDialog(npc){
