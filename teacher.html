@@ -47,6 +47,17 @@
   #summary{ font-size:18px; line-height:1.9; margin-left:auto; text-align:right; }
   #summary b{ color:var(--mint); }
 
+  #domains{
+    background:#1d222b; border-radius:16px; padding:12px 18px; margin-bottom:18px;
+    display:flex; align-items:center; flex-wrap:wrap; gap:8px;
+  }
+  #domains .dlbl{ color:#8b97a5; font-size:13px; margin-right:6px; }
+  #domains .chip{
+    background:#2a313c; border-radius:99px; padding:7px 16px; font-size:15px;
+  }
+  #domains .chip b{ color:var(--mint); }
+  #domains .chip.low{ background:#4a3520; }
+  #domains .chip.low b{ color:#f3b06a; }
   #grid{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:12px;
   }
@@ -90,6 +101,7 @@
     </div>
     <div id="summary"></div>
   </div>
+  <div id="domains" class="hidden"></div>
   <div id="grid"><div id="empty">아직 입장한 학생이 없어요.<br>게임 첫 화면에서 교실 코드를 입력하면 여기에 나타납니다 🌱</div></div>
 </div>
 
@@ -152,7 +164,27 @@ function render(snap){
   const doneN = rows.filter(r => r.state === "done").length;
   document.getElementById("summary").innerHTML =
     `참여 <b>${rows.length}</b>명 · 완주 <b>${doneN}</b>명<br>` +
-    `<span style="font-size:13px;color:#9aa5b3;">💛 하트 합계 ${rows.reduce((s, r) => s + (r.hearts || 0), 0)}</span>`;
+    `<span style="font-size:13px;color:#9aa5b3;">💛 금하트 합계 ${rows.reduce((s, r) => s + (r.gold || 0), 0)} · 하트 합계 ${rows.reduce((s, r) => s + (r.hearts || 0), 0)}</span>`;
+
+  // 영역별 첫 시도 정답률 (반 전체) — 가장 낮은 영역은 수업에서 다룰 주제
+  const dn = ["① 감정 알아차리기", "② 공감", "③ 화 다스리기", "④ 공동체"];
+  const gSum = [0,0,0,0], aSum = [0,0,0,0];
+  rows.forEach(r => {
+    if (Array.isArray(r.goldS) && Array.isArray(r.ansS))
+      for (let i = 0; i < 4; i++){ gSum[i] += r.goldS[i] || 0; aSum[i] += r.ansS[i] || 0; }
+  });
+  const dEl = document.getElementById("domains");
+  if (aSum.some(a => a > 0)){
+    dEl.classList.remove("hidden");
+    const rates = aSum.map((a, i) => a ? Math.round(gSum[i] / a * 100) : null);
+    const valid = rates.filter(x => x !== null);
+    const minR = Math.min(...valid);
+    dEl.innerHTML =
+      `<span class="dlbl">첫 시도 정답률</span>` +
+      dn.map((n, i) => rates[i] === null ? "" :
+        `<span class="chip${rates[i] === minR && valid.length > 1 ? " low" : ""}">${n} <b>${rates[i]}%</b></span>`).join("") +
+      (valid.length > 1 ? `<span class="dlbl">— 주황색 영역을 수업에서 함께 이야기해 보세요</span>` : "");
+  } else dEl.classList.add("hidden");
 
   if (!rows.length) return;
   grid.innerHTML = "";
@@ -161,14 +193,14 @@ function render(snap){
     const pct = r.maxHearts ? Math.round((r.hearts || 0) / r.maxHearts * 100) : 0;
     const card = document.createElement("div");
     card.className = "stu " + info.cls;
-    const key = JSON.stringify([r.hearts, r.stage, r.state, r.gems]);
+    const key = JSON.stringify([r.hearts, r.stage, r.state, r.gems, r.gold]);
     if (lastUpdate[r.id] && lastUpdate[r.id] !== key) card.classList.add("fresh");
     lastUpdate[r.id] = key;
     card.innerHTML =
       `<div class="who">${r.name || "?"} <small>${r.cls || ""}</small></div>` +
       `<div class="st">${info.txt}</div>` +
       `<div class="bar"><i style="width:${pct}%"></i></div>` +
-      `<div class="nums">💛 ${r.hearts || 0}/${r.maxHearts || 20} · 💎 ${r.gems || 0} · 🌈 ${r.rainbows || 0}</div>`;
+      `<div class="nums">💛 ${r.gold || 0} 🤍 ${(r.hearts || 0) - (r.gold || 0)} · 💎 ${r.gems || 0} · 🌈 ${r.rainbows || 0}</div>`;
     grid.appendChild(card);
     setTimeout(() => card.classList.remove("fresh"), 600);
   }

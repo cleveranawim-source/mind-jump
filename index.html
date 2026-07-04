@@ -200,10 +200,11 @@
       <div class="cert-title">🌈 마음 모험 수료증 🌈</div>
       <div id="rep-who" class="cert-who"></div>
       <div id="rep-date" class="cert-date"></div>
-      <div class="cert-skills">
+      <div id="rep-skills" class="cert-skills">
         ✅ 내 감정 알아차리기 &nbsp; ✅ 친구 마음에 공감하기<br>
         ✅ 화는 멈춤과 숨 고르기로 &nbsp; ✅ 먼저 손 내미는 공동체
       </div>
+      <div id="rep-gold" style="font-size:15px; color:#b8860b; margin-bottom:8px;"></div>
       <div id="rep-stats" class="cert-stats"></div>
       <div id="rep-rainbow" class="cert-rb hidden">🌈 숨겨진 무지개 보석 4개를 모두 찾은 진정한 마음 탐험가!</div>
       <p class="cert-msg">네 가지 마음 기술을 모두 익혔습니다.<br>너의 마음 모험은 이제 진짜 시작! 💚</p>
@@ -645,6 +646,8 @@ let state = "title";          // title | play | dialog | clear
 let cur = 0;                  // 현재 레벨
 let lv = null;                // 파싱된 레벨
 let totalGems = 0, totalHearts = 0, maxGems = 0, maxHearts = 0, totalRainbows = 0;
+let totalGold = 0;                       // 첫 시도 정답(금하트) — 은하트 = totalHearts - totalGold
+let goldS = [0,0,0,0], ansS = [0,0,0,0]; // 스테이지(영역)별 금하트/답변 수
 let camX = 0, camY = ROWS * T - VH;
 let time = 0;
 
@@ -972,7 +975,8 @@ function openDialog(npc){
   fb.className = "hidden";
   document.getElementById("dlg-next").classList.add("hidden");
 
-  // 보기 순서 섞기
+  // 보기 순서 섞기 + 첫 시도 여부 추적 (금하트/은하트)
+  let firstTry = true;
   const order = q.opts.map((_, i) => i).sort(() => Math.random() - 0.5);
   const box = document.getElementById("dlg-opts");
   box.innerHTML = "";
@@ -982,13 +986,20 @@ function openDialog(npc){
     b.textContent = `${vi+1}. ${q.opts[oi]}`;
     b.onclick = () => {
       if (oi === q.ans){
-        fb.className = "good"; fb.innerHTML = "💚 " + q.good;
+        const gold = firstTry && !npc.answered;
+        fb.className = "good";
+        fb.innerHTML = (gold ? "💛 <b>한 번에 알아챘어!</b> " : "🤍 ") + q.good;
         box.querySelectorAll(".opt").forEach(x => x.classList.add("wrong"));
         b.classList.remove("wrong"); b.style.borderColor = "#3FE5A0"; b.style.background = "#f2fdf8";
         document.getElementById("dlg-next").classList.remove("hidden");
         sfx.good();
-        if (!npc.answered){ npc.answered = true; totalHearts++; }
+        if (!npc.answered){
+          npc.answered = true; totalHearts++;
+          ansS[cur] = (ansS[cur] || 0) + 1;
+          if (gold){ totalGold++; goldS[cur] = (goldS[cur] || 0) + 1; }
+        }
       } else {
+        firstTry = false;
         fb.className = "hint"; fb.innerHTML = "🤔 " + q.hint;
         b.classList.add("wrong");
         sfx.soft();
@@ -1022,7 +1033,7 @@ function stageClear(){
   document.getElementById("clear-emoji").textContent = lv.clearEmoji;
   document.getElementById("clear-msg").innerHTML = lv.clearMsg;
   document.getElementById("clear-stats").innerHTML =
-    `💎 감정 보석 ${totalGems}/${maxGems} &nbsp;·&nbsp; 💛 마음 하트 ${totalHearts}/${maxHearts}` +
+    `💛 금하트 ${totalGold} &nbsp;·&nbsp; 🤍 은하트 ${totalHearts - totalGold} &nbsp;·&nbsp; 💎 ${totalGems}/${maxGems}` +
     (totalRainbows ? ` &nbsp;·&nbsp; 🌈 ${totalRainbows}` : "");
   document.getElementById("btn-next").classList.remove("hidden");
   document.getElementById("clear").classList.remove("hidden");
@@ -1082,8 +1093,16 @@ function showReport(){
   document.getElementById("rep-who").textContent = (cls || name) ? `${cls} ${name}`.trim() : "이름 없는 모험가";
   const d = new Date();
   document.getElementById("rep-date").textContent = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 · 명지중학교 SEL`;
+  const skillNames = ["내 감정 알아차리기", "친구 마음에 공감하기", "화는 멈춤과 숨 고르기로", "먼저 손 내미는 공동체"];
+  document.getElementById("rep-skills").innerHTML =
+    `✅ ${skillNames[0]} <b style="color:#b8860b;">💛${goldS[0]||0}</b> &nbsp; ✅ ${skillNames[1]} <b style="color:#b8860b;">💛${goldS[1]||0}</b><br>` +
+    `✅ ${skillNames[2]} <b style="color:#b8860b;">💛${goldS[2]||0}</b> &nbsp; ✅ ${skillNames[3]} <b style="color:#b8860b;">💛${goldS[3]||0}</b>`;
+  document.getElementById("rep-gold").textContent =
+    totalGold >= totalHearts && totalHearts > 0
+      ? `${totalHearts}개의 마음 고민을 전부 한 번에 알아챘어요! 완벽해요 ✨`
+      : `${totalHearts}개의 마음 고민 중 ${totalGold}개를 한 번에 알아챘어요!`;
   document.getElementById("rep-stats").innerHTML =
-    `💎 ${totalGems}/${maxGems} · 💛 ${totalHearts}/${maxHearts} · 🌈 ${totalRainbows}/4`;
+    `💛 금하트 ${totalGold} · 🤍 은하트 ${totalHearts - totalGold} · 💎 ${totalGems}/${maxGems} · 🌈 ${totalRainbows}/4`;
   document.getElementById("rep-rainbow").classList.toggle("hidden", totalRainbows < 4);
   document.getElementById("report").classList.remove("hidden");
   syncProgress("done");
@@ -1109,16 +1128,18 @@ document.getElementById("btn-save").onclick = () => {
   x.fillStyle = "#889"; x.font = "20px 'Jua', sans-serif";
   x.fillText(document.getElementById("rep-date").textContent, 500, 225);
   x.fillStyle = "#333"; x.font = "27px 'Jua', sans-serif";
-  x.fillText("✅ 내 감정 알아차리기      ✅ 친구 마음에 공감하기", 500, 305);
-  x.fillText("✅ 화는 멈춤과 숨 고르기로   ✅ 먼저 손 내미는 공동체", 500, 355);
-  x.font = "30px 'Jua', sans-serif";
-  x.fillText(document.getElementById("rep-stats").textContent, 500, 440);
+  x.fillText(`✅ 내 감정 알아차리기 💛${goldS[0]||0}    ✅ 친구 마음에 공감하기 💛${goldS[1]||0}`, 500, 305);
+  x.fillText(`✅ 화는 멈춤과 숨 고르기로 💛${goldS[2]||0}    ✅ 먼저 손 내미는 공동체 💛${goldS[3]||0}`, 500, 355);
+  x.fillStyle = "#b8860b"; x.font = "25px 'Jua', sans-serif";
+  x.fillText(document.getElementById("rep-gold").textContent, 500, 420);
+  x.fillStyle = "#333"; x.font = "30px 'Jua', sans-serif";
+  x.fillText(document.getElementById("rep-stats").textContent, 500, 470);
   if (totalRainbows >= 4){
     x.fillStyle = "#b3541e"; x.font = "24px 'Jua', sans-serif";
-    x.fillText("🌈 숨겨진 무지개 보석 4개를 모두 찾은 진정한 마음 탐험가!", 500, 495);
+    x.fillText("🌈 숨겨진 무지개 보석 4개를 모두 찾은 진정한 마음 탐험가!", 500, 520);
   }
   x.fillStyle = "#556"; x.font = "24px 'Jua', sans-serif";
-  x.fillText("네 가지 마음 기술을 모두 익혔습니다. 너의 마음 모험은 이제 진짜 시작! 💚", 500, 570);
+  x.fillText("네 가지 마음 기술을 모두 익혔습니다. 너의 마음 모험은 이제 진짜 시작! 💚", 500, 575);
   x.fillStyle = "#99a"; x.font = "18px 'Jua', sans-serif";
   x.fillText("마음 점프! Mind Jump — 명지중학교 사회정서교육", 500, 630);
   const a = document.createElement("a");
@@ -1141,6 +1162,7 @@ document.getElementById("btn-home").onclick = () => {
 /* ---------- 시작 ---------- */
 function startGame(levelIdx){
   totalGems = 0; totalHearts = 0; totalRainbows = 0;
+  totalGold = 0; goldS = [0,0,0,0]; ansS = [0,0,0,0];
   // 시작한 스테이지부터 끝까지의 보석·친구 수를 목표로
   maxGems = 0; maxHearts = 0;
   for (let i = levelIdx; i < LEVELS.length; i++){
@@ -1382,9 +1404,9 @@ function draw(){
   if (state !== "title"){
     const solved = L.npcs.filter(n => n.answered).length;
     ctx.fillStyle = "rgba(20,23,28,.55)";
-    roundRect(12, 10, 340, 38, 12); ctx.fill();
+    roundRect(12, 10, 400, 38, 12); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.font = "18px 'Jua', sans-serif"; ctx.textAlign = "left";
-    ctx.fillText(`💎 ${totalGems}/${maxGems}   💛 ${totalHearts}   💬 ${solved}/${L.npcs.length}`, 26, 30);
+    ctx.fillText(`💎 ${totalGems}/${maxGems}   💛 ${totalGold} 🤍 ${totalHearts - totalGold}   💬 ${solved}/${L.npcs.length}`, 26, 30);
 
     ctx.textAlign = "right";
     ctx.fillStyle = "rgba(20,23,28,.55)";
@@ -1439,7 +1461,8 @@ function syncProgress(st){
   const data = {
     cls: (localStorage.getItem("mj-class") || "").trim(),
     name, stage: cur + 1, state: st || state,
-    hearts: totalHearts, maxHearts, gems: totalGems, rainbows: totalRainbows
+    hearts: totalHearts, maxHearts, gems: totalGems, rainbows: totalRainbows,
+    gold: totalGold, goldS: [...goldS], ansS: [...ansS]
   };
   const key = JSON.stringify(data);
   if (key === lastSync) return;      // 변화 없으면 쓰기 생략
