@@ -723,6 +723,11 @@ function loadLevel(i){
   Object.assign(player, { x: lv.spawn.x, y: lv.spawn.y, vx:0, vy:0, onGround:false, face:1, coyote:9, jbuf:9 });
   camX = 0;
   particles.length = 0;
+  // 이번 스테이지 친구들의 초상 프리로드 (대화창 뜰 때 끊김 방지)
+  lv.npcs.forEach(n => {
+    const f = typeof PORTRAITS !== "undefined" && PORTRAITS[n.q.name];
+    if (f) new Image().src = "npc/" + f;
+  });
 }
 
 /* ---------- 입력 ---------- */
@@ -1006,11 +1011,26 @@ function respawn(msg, countDeath = true){
 }
 
 /* ---------- 대화 ---------- */
+// AI 일러스트 초상 (없는 캐릭터는 이모지로 표시) — npc/ 폴더에 추가 후 여기 매핑
+const PORTRAITS = {
+  "두근이": "rabbit.png",
+  "아옹이": "tiger.png",
+  "펭펭": "penguin.png"
+};
 let curNpc = null;
 function openDialog(npc){
   state = "dialog"; curNpc = npc;
   const q = npc.q;
-  document.getElementById("dlg-emoji").textContent = q.emoji;
+  const pt = document.getElementById("dlg-portrait");
+  const em = document.getElementById("dlg-emoji");
+  if (PORTRAITS[q.name]){
+    pt.style.backgroundImage = `url(npc/${PORTRAITS[q.name]})`;
+    em.style.visibility = "hidden";
+  } else {
+    pt.style.backgroundImage = "none";
+    em.style.visibility = "visible";
+  }
+  em.textContent = q.emoji;
   document.getElementById("dlg-name").textContent = q.name;
   document.getElementById("dlg-q").textContent = q.q;
   const fb = document.getElementById("dlg-fb");
