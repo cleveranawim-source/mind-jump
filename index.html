@@ -139,7 +139,7 @@
     <div class="card">
       <h2>🍄 마음 점프!</h2>
       <div class="sub">사회정서학습(SEL) 플랫포머 — 명지중학교</div>
-      <div class="emoji-row">😊 😢 😡 😨 🥰</div>
+      <img src="hero.png" alt="마음이" style="width:150px; display:block; margin:2px auto 10px; border-radius:24px;">
       <p style="font-size:15px; line-height:1.7; color:#445;">
         감정 보석을 모으고, 길에서 만난 친구들의<br>마음 고민을 함께 풀어 주며 깃발까지 도착하세요!
       </p>
@@ -203,6 +203,7 @@
   <!-- 수료증 -->
   <div id="report" class="ov hidden">
     <div class="card cert">
+      <img src="hero.png" alt="" style="width:84px; display:block; margin:0 auto 6px; border-radius:18px;">
       <div class="cert-title">🌈 마음 모험 수료증 🌈</div>
       <div id="rep-who" class="cert-who"></div>
       <div id="rep-date" class="cert-date"></div>
@@ -1210,6 +1211,8 @@ document.getElementById("btn-rep-home").onclick = () => {
   state = "title";
   bgmStop();
 };
+const heroImg = new Image();
+heroImg.src = "hero.png";
 document.getElementById("btn-save").onclick = () => {
   const c = document.createElement("canvas");
   c.width = 1000; c.height = 700;
@@ -1217,6 +1220,10 @@ document.getElementById("btn-save").onclick = () => {
   x.fillStyle = "#fffdf6"; x.fillRect(0, 0, 1000, 700);
   x.strokeStyle = "#3FE5A0"; x.lineWidth = 10; x.strokeRect(20, 20, 960, 660);
   x.strokeStyle = "#d9f7ea"; x.lineWidth = 3; x.strokeRect(38, 38, 924, 624);
+  if (heroImg.complete && heroImg.naturalWidth){
+    x.drawImage(heroImg, 66, 62, 128, 128);
+    x.drawImage(heroImg, 806, 62, 128, 128);
+  }
   x.textAlign = "center"; x.fillStyle = "#222";
   x.font = "44px 'Jua', sans-serif";
   x.fillText("🌈 마음 모험 수료증 🌈", 500, 110);
@@ -1320,9 +1327,34 @@ function roundRect(x, y, w, h, r){
   ctx.arcTo(x, y+h, x, y, r); ctx.arcTo(x, y, x+w, y, r); ctx.closePath();
 }
 
+// AI 배경 이미지 (스테이지별, 미러 타일링 패럴랙스)
+const BG_CACHE = {};
+function bgFor(i){
+  if (!BG_CACHE[i]){
+    const im = new Image();
+    im.src = "bg/bg" + (i + 1) + ".jpg";
+    BG_CACHE[i] = im;
+  }
+  return BG_CACHE[i];
+}
+
 function draw(){
   const L = lv || parseLevel(0);
-  // 하늘
+  const bgi = bgFor(cur % 4);
+  if (bgi.complete && bgi.naturalWidth){
+    // 이미지 배경: 홀수 타일은 좌우 반전해 이음새 없이 반복
+    const s = VH / bgi.naturalHeight, w = Math.ceil(bgi.naturalWidth * s);
+    const px = camX * 0.15;
+    for (let i = Math.floor(px / w); i * w - px < VW; i++){
+      const dx = i * w - px;
+      if (i % 2 === 0) ctx.drawImage(bgi, dx, 0, w, VH);
+      else {
+        ctx.save(); ctx.translate(dx + w, 0); ctx.scale(-1, 1);
+        ctx.drawImage(bgi, 0, 0, w, VH); ctx.restore();
+      }
+    }
+  } else {
+  // (이미지 로드 전 폴백) 하늘
   const sky = ctx.createLinearGradient(0, 0, 0, VH);
   sky.addColorStop(0, L.pal.sky1); sky.addColorStop(1, L.pal.sky2);
   ctx.fillStyle = sky; ctx.fillRect(0, 0, VW, VH);
@@ -1357,6 +1389,7 @@ function draw(){
     const hx = ((i * 420 - camX * 0.5) % (VW + 500)) - 250;
     ctx.beginPath(); ctx.ellipse(hx, VH, 220, 110 + (i%3)*30, 0, Math.PI, 0); ctx.fill();
   }
+  } // 폴백 배경 끝
 
   ctx.save();
   ctx.translate(-Math.round(camX), -Math.round(camY));
