@@ -1344,7 +1344,7 @@ function bgFor(i){
   return BG_CACHE[i];
 }
 
-// 주인공 3D 스프라이트 (idle/jump/fall/hurt) — 로드 전엔 벡터 폴백
+// 주인공 3D 스프라이트 (idle/walk/jump/fall/hurt) — 로드 전엔 벡터 폴백
 const HERO_SPR = {};
 function heroSprite(name){
   if (!HERO_SPR[name]){
@@ -1354,6 +1354,8 @@ function heroSprite(name){
   }
   return HERO_SPR[name];
 }
+// 시작 즉시 6포즈 전부 프리로드 (걷기·점프 첫 순간 벡터로 깜빡이는 것 방지)
+["idle", "walk1", "walk2", "jump", "fall", "hurt"].forEach(heroSprite);
 
 function draw(){
   const L = lv || parseLevel(0);
@@ -1525,7 +1527,8 @@ function draw(){
                 : mood === "fall" ? "fall"
                 : mood === "run"  ? (Math.floor(time * 8) % 2 ? "walk2" : "walk1")   // 2프레임 걷기
                 : "idle";
-  const heroSpr = heroSprite(sprName);
+  let heroSpr = heroSprite(sprName);
+  if (!(heroSpr.complete && heroSpr.naturalWidth)) heroSpr = heroSprite("idle");  // 미로드 포즈는 기본 포즈로 대체(벡터 깜빡임 방지)
   if (heroSpr.complete && heroSpr.naturalWidth){
     const DH = 80, feetFrac = 250 / 260;
     ctx.save();
