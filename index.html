@@ -1344,6 +1344,17 @@ function bgFor(i){
   return BG_CACHE[i];
 }
 
+// 주인공 3D 스프라이트 (idle/jump/fall/hurt) — 로드 전엔 벡터 폴백
+const HERO_SPR = {};
+function heroSprite(name){
+  if (!HERO_SPR[name]){
+    const im = new Image();
+    im.src = "hero/" + name + ".png";
+    HERO_SPR[name] = im;
+  }
+  return HERO_SPR[name];
+}
+
 function draw(){
   const L = lv || parseLevel(0);
   const bgi = bgFor(cur % 4);
@@ -1502,9 +1513,25 @@ function draw(){
     }
   }
 
-  // 플레이어 "마음이" — 새싹이 돋은 둥근 마음 요정
+  // 플레이어 "마음이" — 소프트 3D 스프라이트 (로드 전 벡터 폴백)
   const p = player;
+  const mood = (p.hurtT || 0) > 0 ? "hurt"
+             : state === "dialog" ? "listen"
+             : !p.onGround ? (p.vy < 0 ? "jump" : "fall")
+             : Math.abs(p.vx) > 1 ? "run" : "idle";
   const sq = p.landT > 0 ? 0.85 : (p.onGround ? 1 : 1.06);
+  const heroSpr = heroSprite(mood === "hurt" ? "hurt" : mood === "jump" ? "jump" : mood === "fall" ? "fall" : "idle");
+  if (heroSpr.complete && heroSpr.naturalWidth){
+    const DH = 78, feetFrac = 250 / 260;
+    const bob = mood === "run" ? Math.abs(Math.sin(time * 12)) * 3 : 0;
+    ctx.save();
+    ctx.translate(p.x + p.w / 2, p.y + p.h - bob);
+    ctx.scale((2 - sq) * p.face, sq);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(heroSpr, -DH / 2, -feetFrac * DH, DH, DH);
+    ctx.restore();
+  } else {
+  // 폴백: 벡터 마음이
   const walking = Math.abs(p.vx) > 1 && p.onGround;
   const step = walking ? Math.sin(time * 14) : 0;
   const ex = p.face * 3;
@@ -1534,11 +1561,7 @@ function draw(){
   ctx.beginPath(); ctx.ellipse(-5, -8, 5.5, 3.2, -0.5, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(5, -8, 5.5, 3.2, 0.5, 0, Math.PI*2); ctx.fill();
   ctx.restore();
-  // 표정 (상태에 따라 변화: 다침/점프/낙하/달리기/경청/기본)
-  const mood = (p.hurtT || 0) > 0 ? "hurt"
-             : state === "dialog" ? "listen"
-             : !p.onGround ? (p.vy < 0 ? "jump" : "fall")
-             : Math.abs(p.vx) > 1 ? "run" : "idle";
+  // 표정 (벡터 폴백용)
   const blink = (mood === "idle" && (time % 3.4) < 0.12) || p.landT > 0.06;
   ctx.strokeStyle = "#1d3529"; ctx.lineWidth = 2.2; ctx.lineCap = "round";
   if (mood === "hurt"){
@@ -1593,6 +1616,7 @@ function draw(){
     }
   }
   ctx.restore();
+  } // 폴백 벡터 끝
 
   // 파티클
   for (const q of particles){
