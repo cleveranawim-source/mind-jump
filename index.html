@@ -1518,13 +1518,15 @@ function draw(){
   const sprName = mood === "hurt" ? "hurt"
                 : mood === "jump" ? "jump"
                 : mood === "fall" ? "fall"
-                : mood === "run"  ? (Math.floor(time * 8) % 2 ? "walk2" : "walk1")   // 2프레임 걷기
-                : "idle";
+                : "idle";   // 걷기도 idle 프레임 사용 — 모션은 코드로(프레임 교차 깜빡임 제거)
   if (HERO_ATLAS.complete && HERO_ATLAS.naturalWidth){
     const DH = 80, feetFrac = 250 / 260;
     const fx = (HERO_FRAME[sprName] || 0) * HERO_FS;   // 아틀라스에서 해당 포즈 프레임
+    const bob  = mood === "run" ? Math.abs(Math.sin(time * 8)) * 3 : 0;   // 걷기: 통통 바운스
+    const rock = mood === "run" ? Math.sin(time * 8) * 0.05 : 0;          // 걷기: 좌우 갸웃(웨들)
     ctx.save();
-    ctx.translate(p.x + p.w / 2, p.y + p.h);
+    ctx.translate(p.x + p.w / 2, p.y + p.h - bob);
+    ctx.rotate(rock);
     ctx.scale((2 - sq) * p.face, sq);                  // p.face로 진행 방향에 맞춰 좌우 반전
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(HERO_ATLAS, fx, 0, HERO_FS, HERO_FS, -DH / 2, -feetFrac * DH, DH, DH);
