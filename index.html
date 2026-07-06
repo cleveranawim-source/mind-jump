@@ -1520,13 +1520,17 @@ function draw(){
              : !p.onGround ? (p.vy < 0 ? "jump" : "fall")
              : Math.abs(p.vx) > 1 ? "run" : "idle";
   const sq = p.landT > 0 ? 0.85 : (p.onGround ? 1 : 1.06);
-  const heroSpr = heroSprite(mood === "hurt" ? "hurt" : mood === "jump" ? "jump" : mood === "fall" ? "fall" : "idle");
+  const sprName = mood === "hurt" ? "hurt"
+                : mood === "jump" ? "jump"
+                : mood === "fall" ? "fall"
+                : mood === "run"  ? (Math.floor(time * 8) % 2 ? "walk2" : "walk1")   // 2프레임 걷기
+                : "idle";
+  const heroSpr = heroSprite(sprName);
   if (heroSpr.complete && heroSpr.naturalWidth){
-    const DH = 78, feetFrac = 250 / 260;
-    const bob = mood === "run" ? Math.abs(Math.sin(time * 12)) * 3 : 0;
+    const DH = 80, feetFrac = 250 / 260;
     ctx.save();
-    ctx.translate(p.x + p.w / 2, p.y + p.h - bob);
-    ctx.scale((2 - sq) * p.face, sq);
+    ctx.translate(p.x + p.w / 2, p.y + p.h);
+    ctx.scale((2 - sq) * p.face, sq);              // p.face로 진행 방향에 맞춰 좌우 반전
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(heroSpr, -DH / 2, -feetFrac * DH, DH, DH);
     ctx.restore();
