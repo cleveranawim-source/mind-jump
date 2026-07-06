@@ -1344,18 +1344,11 @@ function bgFor(i){
   return BG_CACHE[i];
 }
 
-// 주인공 3D 스프라이트 (idle/walk/jump/fall/hurt) — 로드 전엔 벡터 폴백
-const HERO_SPR = {};
-function heroSprite(name){
-  if (!HERO_SPR[name]){
-    const im = new Image();
-    im.src = "hero/" + name + ".png";
-    HERO_SPR[name] = im;
-  }
-  return HERO_SPR[name];
-}
-// 시작 즉시 6포즈 전부 프리로드 (걷기·점프 첫 순간 벡터로 깜빡이는 것 방지)
-["idle", "walk1", "walk2", "jump", "fall", "hurt"].forEach(heroSprite);
+// 주인공 3D 스프라이트 — 6포즈를 단일 아틀라스 1장으로 로드 (부분 로드/캐시로 인한 깜빡임 원천 차단)
+const HERO_ATLAS = new Image();
+HERO_ATLAS.src = "hero/atlas.png";
+const HERO_FRAME = { idle: 0, walk1: 1, walk2: 2, jump: 3, fall: 4, hurt: 5 };
+const HERO_FS = 260;   // 아틀라스 한 프레임 크기
 
 function draw(){
   const L = lv || parseLevel(0);
@@ -1527,15 +1520,14 @@ function draw(){
                 : mood === "fall" ? "fall"
                 : mood === "run"  ? (Math.floor(time * 8) % 2 ? "walk2" : "walk1")   // 2프레임 걷기
                 : "idle";
-  let heroSpr = heroSprite(sprName);
-  if (!(heroSpr.complete && heroSpr.naturalWidth)) heroSpr = heroSprite("idle");  // 미로드 포즈는 기본 포즈로 대체(벡터 깜빡임 방지)
-  if (heroSpr.complete && heroSpr.naturalWidth){
+  if (HERO_ATLAS.complete && HERO_ATLAS.naturalWidth){
     const DH = 80, feetFrac = 250 / 260;
+    const fx = (HERO_FRAME[sprName] || 0) * HERO_FS;   // 아틀라스에서 해당 포즈 프레임
     ctx.save();
     ctx.translate(p.x + p.w / 2, p.y + p.h);
-    ctx.scale((2 - sq) * p.face, sq);              // p.face로 진행 방향에 맞춰 좌우 반전
+    ctx.scale((2 - sq) * p.face, sq);                  // p.face로 진행 방향에 맞춰 좌우 반전
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(heroSpr, -DH / 2, -feetFrac * DH, DH, DH);
+    ctx.drawImage(HERO_ATLAS, fx, 0, HERO_FS, HERO_FS, -DH / 2, -feetFrac * DH, DH, DH);
     ctx.restore();
   } else {
   // 폴백: 벡터 마음이
