@@ -1604,22 +1604,28 @@ function draw(){
 
   ctx.restore();
 
-  // HUD
+  // HUD (박스는 텍스트에 맞춰 크기 조절, 양쪽 높이·세로중앙 정렬 통일)
   if (state !== "title"){
     const solved = L.npcs.filter(n => n.answered).length;
+    const HY = 10, HH = 34, HCY = HY + HH / 2;
+    ctx.textBaseline = "middle";
+    // 왼쪽: 진행 상황
+    ctx.font = "18px 'Jua', sans-serif"; ctx.textAlign = "left";
+    const info = `💎 ${totalGems}/${maxGems}   💛${totalGold} 🤍${totalSilver} 🤎${totalBronze}   💬 ${solved}/${L.npcs.length}`;
+    const iw = ctx.measureText(info).width;
     ctx.fillStyle = "rgba(20,23,28,.55)";
-    roundRect(12, 10, 430, 38, 12); ctx.fill();
-    ctx.fillStyle = "#fff"; ctx.font = "18px 'Jua', sans-serif"; ctx.textAlign = "left";
-    ctx.fillText(`💎 ${totalGems}/${maxGems}  💛${totalGold} 🤍${totalSilver} 🤎${totalBronze}  💬 ${solved}/${L.npcs.length}`, 26, 30);
-
-    ctx.textAlign = "right";
-    ctx.fillStyle = "rgba(20,23,28,.55)";
+    roundRect(12, HY, iw + 30, HH, 11); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.fillText(info, 27, HCY);
+    // 오른쪽: 스테이지 이름
+    ctx.font = "16px 'Jua', sans-serif"; ctx.textAlign = "right";
     const nm = L.name;
-    ctx.font = "16px 'Jua', sans-serif";
-    const w = ctx.measureText(nm).width + 28;
-    roundRect(VW - 12 - w, 10, w, 32, 10); ctx.fill();
+    const w = ctx.measureText(nm).width + 30;
+    ctx.fillStyle = "rgba(20,23,28,.55)";
+    roundRect(VW - 12 - w, HY, w, HH, 11); ctx.fill();
     ctx.fillStyle = "#3FE5A0";
-    ctx.fillText(nm, VW - 26, 27);
+    ctx.fillText(nm, VW - 27, HCY);
+    ctx.textBaseline = "alphabetic";
   }
 }
 
