@@ -1671,11 +1671,16 @@ function draw(){
 
 /* ---------- 메인 루프 ---------- */
 let last = performance.now();
+let lastDrawnState = null;
 function frame(now){
   const dt = Math.min((now - last) / 1000, 0.033);
   last = now; time += dt;
-  if (state === "play") update(dt);
-  draw();
+  if (state === "play"){
+    update(dt); draw();                    // 플레이 중에만 60fps로 렌더
+  } else if (state !== lastDrawnState){
+    draw();                                // 타이틀·대화·수료증 등은 진입 시 1회만 그리고 멈춤(발열·배터리 절감)
+  }
+  lastDrawnState = state;
   requestAnimationFrame(frame);
 }
 lv = parseLevel(0);
