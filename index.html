@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>마음 점프! — SEL 플랫포머</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,7 +36,7 @@
   .card h2{ font-size:26px; margin-bottom:6px; }
   .card .sub{ color:#667; font-size:14px; margin-bottom:14px; }
   .card .emoji-row{ font-size:34px; margin:6px 0 14px; letter-spacing:6px; }
-  #bgm-btn{
+  #bgm-btn, #home-btn{
     background:#232830; border:1px solid #3a4250; border-radius:50%;
     width:36px; height:36px; font-size:17px; cursor:pointer;
     vertical-align:middle; margin-left:8px;
@@ -130,7 +130,7 @@
 </style>
 </head>
 <body>
-<h1>🍄 마음 점프! <span class="mint">Mind Jump</span> <button id="bgm-btn" title="배경음악 켜기/끄기">🎵</button></h1>
+<h1>🍄 마음 점프! <span class="mint">Mind Jump</span> <button id="bgm-btn" title="배경음악 켜기/끄기">🎵</button> <button id="home-btn" class="hidden" title="처음 화면(스테이지 선택)으로">🏠</button></h1>
 <div id="wrap">
   <canvas id="game" width="960" height="540"></canvas>
 
@@ -181,6 +181,7 @@
       <p id="clear-msg" style="font-size:15px; line-height:1.75; color:#334; margin-bottom:14px;"></p>
       <div id="clear-stats" style="font-size:16px; font-weight:700; margin-bottom:14px;"></div>
       <button class="btn" id="btn-next">다음 스테이지 ▶</button>
+      <button class="btn ghost" id="btn-prev">◀ 이전 스테이지</button>
       <button class="btn ghost" id="btn-home">처음으로</button>
     </div>
   </div>
@@ -214,7 +215,7 @@
       <div id="rep-gold" class="cert-stats" style="color:#b8860b;"></div>
       <div id="rep-stats" style="font-size:15px; color:#3a7ca5; margin-bottom:8px;"></div>
       <div id="rep-badges" class="cert-rb hidden"></div>
-      <p class="cert-msg">네 가지 마음 기술을 모두 익혔습니다.<br>너의 마음 모험은 이제 진짜 시작! 💚</p>
+      <p id="rep-msg" class="cert-msg">네 가지 마음 기술을 모두 익혔습니다.<br>너의 마음 모험은 이제 진짜 시작! 💚</p>
       <button class="btn" id="btn-save">이미지로 저장 📸</button>
       <button class="btn ghost" id="btn-rep-home">처음으로</button>
     </div>
@@ -231,7 +232,7 @@
 <div id="foot">
   명지중학교 사회정서교육(SEL) · 감정 알아차리기 → 친구 마음 공감 → 화 다스리기 → 함께하는 공동체<br>
   친구의 고민에 대답이 틀려도 괜찮아요. 다시 생각해서 고르면 돼요 💚<br>
-  <a href="teacher.html" style="color:#4a5563;">교사용 발표 모드</a>
+  <a href="teacher.html" style="color:#8b97a5;">교사용 발표 모드</a>
 </div>
 
 <script>
@@ -241,6 +242,22 @@
    레벨 지도와 질문은 아래 LEVELS 에서 자유롭게 수정하세요.
    지도 기호: # 블록 / g 보석 / N 친구(질문) / ^ 가시(장애물) / P 시작 / F 깃발
    ============================================================ */
+// localStorage 안전 래퍼 — 저장 차단 환경(사파리 시크릿 등)에서도 게임이 죽지 않게
+const _ls = (() => { try { return window.localStorage; } catch(e){ return null; } })();
+const LS = {
+  get(k){ try { return _ls ? _ls.getItem(k) : null; } catch(e){ return null; } },
+  set(k, v){ try { if (_ls) _ls.setItem(k, v); } catch(e){} }
+};
+
+// 편향 없는 셔플(Fisher-Yates) — 보기 순서를 고르게 섞어 정답 위치 쏠림 방지
+function shuffle(a){
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 const T = 40, VW = 960, VH = 540, ROWS = 14;
 let ZOOM = 1.3;                          // 월드 카메라 줌 (클수록 확대 — 콘솔에서 조정 가능)
 
@@ -311,7 +328,7 @@ const LEVELS = [
       emoji:"🐸", name:"개굴이",
       q:"월요일 아침만 되면 배가 아픈 것 같아. 병원에선 아무 이상 없대. 왜 그럴까?",
       opts:["학교 가기 부담스러운 마음이 몸으로 신호를 보내는 걸 수도 있어","꾀병이니까 무시해야 해","월요일엔 원래 다 아픈 거야"], ans:0,
-      good:"맞아! 마음과 몸은 연결되어 있어서, 말 못 한 감정이 배앓이나 두통으로 나타나기도 해. 그 마음을 알아주는 게 시작이야. 💚",
+      good:"맞아! 마음과 몸은 연결되어 있어서, 말 못 한 감정이 배앓이나 두통으로 나타나기도 해. 그 마음을 알아주는 게 시작이야. 학교가 계속 힘들거나 아픔이 오래가면 부모님·선생님·보건 선생님께 이야기해 보자. 💚",
       hint:"몸엔 이상이 없는데 '월요일 아침만' 아프다는 게 힌트야."
     },
     {
@@ -433,7 +450,7 @@ const LEVELS = [
       emoji:"🐳", name:"고래",
       q:"단톡방에서 친구가 올린 글이 놀림감이 되고 있어. 웃긴 짤도 계속 올라와.",
       opts:["\"그만하자, 본인은 속상할 것 같아\"라고 말해본다","재밌으니까 나도 짤을 만든다","좋아요만 조용히 누른다"], ans:0,
-      good:"용감해! 화면 뒤에도 마음이 있어. 한 사람의 '그만하자'가 방 전체의 분위기를 바꿀 수 있어. 💚",
+      good:"용감해! 화면 뒤에도 마음이 있어. 한 사람의 '그만하자'가 방 전체의 분위기를 바꿔. 그리고 놀림이 계속되면 꼭 선생님이나 믿을 수 있는 어른에게 알리는 것도 잊지 마 — 그건 고자질이 아니라 친구를 지키는 일이야. 💚",
       hint:"그 글을 쓴 친구가 지금 이 방을 보고 있다면 어떤 기분일까?"
     }
   ]
@@ -653,9 +670,10 @@ const ctx = cvs.getContext("2d");
 let state = "title";          // title | play | dialog | clear
 let cur = 0;                  // 현재 레벨
 let lv = null;                // 파싱된 레벨
-let totalGems = 0, totalHearts = 0, maxGems = 0, maxHearts = 0, totalRainbows = 0;
+let totalGems = 0, totalHearts = 0, maxGems = 0, maxHearts = 0, totalRainbows = 0, maxRainbows = 0;
 let totalGold = 0, totalSilver = 0, totalBronze = 0; // 💛 한 번에 / 🤍 한 번 틀리고 / 🤎 다 틀려보고 정답
 let goldS = [0,0,0,0], ansS = [0,0,0,0];             // 스테이지(영역)별 금하트/답변 수
+let playedFrom = 0;                                  // 이번 판을 몇 단계부터 시작했는지(부분 플레이 판별)
 let totalDeaths = 0, stageDeaths = 0;                // 리스폰(추락·장애물) 횟수 — 감점 없음, 배지 판정용
 let shieldS = [false, false, false, false];          // 스테이지 무사통과(리스폰 0회) 🛡️
 let camX = 0, camY = ROWS * T - VH / ZOOM;
@@ -745,8 +763,11 @@ function setKey(code, down){
   }
 }
 window.addEventListener("keydown", e => {
-  if (["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault();
+  // 입력창(이름·반·교실코드)에 타이핑 중이면 게임 조작으로 가로채지 않음 — 스페이스·방향키 정상 입력
+  const tag = (e.target && e.target.tagName) || "";
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
   if (state === "dialog" || state === "storm"){
+    if (["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault();
     const boxSel = state === "dialog" ? "#dlg-opts .opt" : "#storm-opts .opt";
     const nxId = state === "dialog" ? "dlg-next" : "storm-next";
     const n = { Digit1:0, Digit2:1, Digit3:2 }[e.code];
@@ -760,17 +781,25 @@ window.addEventListener("keydown", e => {
     }
     return;
   }
-  if (e.code === "KeyR" && state === "play"){ respawn("다시 출발! 💪", false); return; }
+  if (state !== "play") return;   // 타이틀·클리어·수료증에선 이동키 무시(버튼·입력 조작 보존)
+  if (["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault();
+  if (e.code === "KeyR"){ respawn("다시 출발! 💪", false); return; }
   setKey(e.code, true);
 });
-window.addEventListener("keyup", e => setKey(e.code, false));
+window.addEventListener("keyup", e => {
+  const tag = (e.target && e.target.tagName) || "";
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  setKey(e.code, false);
+});
 
 // 터치 버튼
 function bindTouch(id, code){
   const el = document.getElementById(id);
   el.addEventListener("pointerdown", e => { e.preventDefault(); setKey(code, true); });
-  el.addEventListener("pointerup",   e => { e.preventDefault(); setKey(code, false); });
-  el.addEventListener("pointerleave",e => setKey(code, false));
+  const release = e => { if (e) e.preventDefault(); setKey(code, false); };
+  el.addEventListener("pointerup", release);
+  el.addEventListener("pointerleave", release);
+  el.addEventListener("pointercancel", release);   // 전화 착신·제스처 등으로 취소돼도 키 고착 방지
 }
 bindTouch("tL","ArrowLeft"); bindTouch("tR","ArrowRight"); bindTouch("tJ","Space");
 
@@ -803,7 +832,7 @@ const sfx = {
 
 /* ---------- 배경음악 (WebAudio 칩튠, 파일 없음) ---------- */
 const BGM = {
-  on: (localStorage.getItem("mj-bgm") ?? "1") === "1",
+  on: (LS.get("mj-bgm") ?? "1") === "1",
   playing: false, step: 0, nextT: 0,
   // 스테이지별 트랙: 코드진행·아르페지오·템포·음색이 모두 다름 (arp의 3 = 근음 한 옥타브 위)
   tracks: [
@@ -849,7 +878,7 @@ const bgmBtn = document.getElementById("bgm-btn");
 bgmBtn.textContent = BGM.on ? "🎵" : "🔇";
 bgmBtn.onclick = () => {
   BGM.on = !BGM.on;
-  localStorage.setItem("mj-bgm", BGM.on ? "1" : "0");
+  LS.set("mj-bgm", BGM.on ? "1" : "0");
   bgmBtn.textContent = BGM.on ? "🎵" : "🔇";
 };
 
@@ -938,7 +967,7 @@ function update(dt){
     if (p.x + p.w > m.x + 4 && p.x < m.x + m.w - 4 &&
         p.y + p.h >= m.y && preBottom <= m.y + 10){
       p.y = m.y - p.h; p.vy = 0; p.onGround = true;
-      p.x += m.dx;   // 발판과 함께 이동
+      p.x = Math.max(0, Math.min(p.x + m.dx, lv.pxW - p.w));   // 발판과 함께 이동(경계 이탈 방지)
     }
   }
 
@@ -971,7 +1000,7 @@ function update(dt){
       rectOverlap(p.x, p.y, p.w, p.h, lv.rainbow.c*T + 4, lv.rainbow.r*T + 4, 32, 32)){
     lv.rainbow.got = true; totalRainbows++;
     sfx.rainbow();
-    toast(`🌈 숨겨진 무지개 보석 발견! (${totalRainbows}/4)`);
+    toast(`🌈 숨겨진 무지개 보석 발견! (${totalRainbows}/${maxRainbows})`);
     burst(lv.rainbow.c*T + 20, lv.rainbow.r*T + 20, "#ff9ff3");
     burst(lv.rainbow.c*T + 20, lv.rainbow.r*T + 20, "#74b9ff");
     syncProgress();
@@ -1013,7 +1042,7 @@ function update(dt){
 function respawn(msg, countDeath = true){
   if (countDeath){ stageDeaths++; totalDeaths++; player.hurtT = 1.1; }   // R키 수동 재시작은 세지 않음
   sfx.ouch();
-  Object.assign(player, { x: lv.spawn.x, y: lv.spawn.y, vx:0, vy:0 });
+  Object.assign(player, { x: lv.spawn.x, y: lv.spawn.y, vx:0, vy:0, onGround:false, coyote:9, jbuf:9 });
   toast(msg);
 }
 
@@ -1044,12 +1073,18 @@ const PORTRAITS = {
 let curNpc = null;
 function openDialog(npc){
   state = "dialog"; curNpc = npc;
+  particles.length = 0;   // 대화 프리즈 중 공중에 얼어붙는 파티클 잔상 제거
   const q = npc.q;
   const pt = document.getElementById("dlg-portrait");
   const em = document.getElementById("dlg-emoji");
   if (PORTRAITS[q.name]){
-    pt.style.backgroundImage = `url(npc/${PORTRAITS[q.name]})`;
+    const src = "npc/" + PORTRAITS[q.name];
+    pt.style.backgroundImage = `url(${src})`;
     em.style.visibility = "hidden";
+    // 초상 로드 실패 시 이모지로 폴백 (빈 원만 남지 않게)
+    const probe = new Image();
+    probe.onerror = () => { pt.style.backgroundImage = "none"; em.style.visibility = "visible"; };
+    probe.src = src;
   } else {
     pt.style.backgroundImage = "none";
     em.style.visibility = "visible";
@@ -1063,7 +1098,7 @@ function openDialog(npc){
 
   // 보기 순서 섞기 + 오답 횟수 추적 (💛 0회 / 🤍 1회 / 🤎 2회 — 마음 점수 3·2·1점)
   let wrongs = 0;
-  const order = q.opts.map((_, i) => i).sort(() => Math.random() - 0.5);
+  const order = shuffle(q.opts.map((_, i) => i));
   const box = document.getElementById("dlg-opts");
   box.innerHTML = "";
   order.forEach((oi, vi) => {
@@ -1133,6 +1168,7 @@ function stageClear(){
     (stageDeaths === 0 ? ` &nbsp;·&nbsp; 🛡️ 무사통과!` : "") +
     (totalRainbows ? ` &nbsp;·&nbsp; 🌈 ${totalRainbows}` : "");
   document.getElementById("btn-next").classList.remove("hidden");
+  document.getElementById("btn-prev").classList.toggle("hidden", cur === 0);   // 1스테이지엔 이전 없음
   document.getElementById("clear").classList.remove("hidden");
   syncProgress("clear");
 }
@@ -1155,7 +1191,7 @@ function renderStorm(){
   const fb = document.getElementById("storm-fb");
   fb.className = "hidden"; fb.innerHTML = "";
   document.getElementById("storm-next").classList.add("hidden");
-  const order = q.opts.map((_, i) => i).sort(() => Math.random() - 0.5);
+  const order = shuffle(q.opts.map((_, i) => i));
   const box = document.getElementById("storm-opts");
   box.innerHTML = "";
   order.forEach((oi, vi) => {
@@ -1185,15 +1221,22 @@ document.getElementById("storm-next").onclick = () => {
 /* ---------- 수료증 ---------- */
 function showReport(){
   state = "report"; sfx.flag();
-  const name = (localStorage.getItem("mj-name") || "").trim();
-  const cls = (localStorage.getItem("mj-class") || "").trim();
+  const name = (LS.get("mj-name") || "").trim();
+  const cls = (LS.get("mj-class") || "").trim();
   document.getElementById("rep-who").textContent = (cls || name) ? `${cls} ${name}`.trim() : "이름 없는 모험가";
   const d = new Date();
   document.getElementById("rep-date").textContent = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 · 명지중학교 SEL`;
   const skillNames = ["내 감정 알아차리기", "친구 마음에 공감하기", "화는 멈춤과 숨 고르기로", "먼저 손 내미는 공동체"];
+  // 실제 플레이한 영역만 ✅, 나머지는 회색(◽). 금하트 0은 표시 안 함(0=실패로 읽히지 않게)
+  const cell = i => i >= playedFrom
+    ? `✅ ${skillNames[i]}${goldS[i] ? ` <b style="color:#b8860b;">💛${goldS[i]}</b>` : ""}`
+    : `<span style="color:#9aa;">◽ ${skillNames[i]}</span>`;
   document.getElementById("rep-skills").innerHTML =
-    `✅ ${skillNames[0]} <b style="color:#b8860b;">💛${goldS[0]||0}</b> &nbsp; ✅ ${skillNames[1]} <b style="color:#b8860b;">💛${goldS[1]||0}</b><br>` +
-    `✅ ${skillNames[2]} <b style="color:#b8860b;">💛${goldS[2]||0}</b> &nbsp; ✅ ${skillNames[3]} <b style="color:#b8860b;">💛${goldS[3]||0}</b>`;
+    `${cell(0)} &nbsp; ${cell(1)}<br>${cell(2)} &nbsp; ${cell(3)}`;
+  // 부분 플레이면 수료 문구를 정확하게 조정(교육 이수 신뢰성)
+  document.getElementById("rep-msg").innerHTML = playedFrom === 0
+    ? "네 가지 마음 기술을 모두 익혔습니다.<br>너의 마음 모험은 이제 진짜 시작! 💚"
+    : `${playedFrom + 1}단계부터 도전해서 마음 기술을 익혔어요!<br>처음부터 하면 네 가지를 모두 모을 수 있어요 💚`;
   const mind = totalGold * 3 + totalSilver * 2 + totalBronze;
   const shields = shieldS.filter(Boolean).length;
   const adv = totalGems + totalRainbows * 10 + shields * 10;
@@ -1204,19 +1247,14 @@ function showReport(){
   const badges = [];
   if (shields > 0) badges.push(`🛡️ 무사통과 ×${shields}`);
   if (totalDeaths >= 10) badges.push(`🔥 끈기 배지 — ${totalDeaths}번 넘어져도 다시 일어났어!`);
-  if (totalRainbows >= 4) badges.push("🌈 마음 탐험가");
+  if (maxRainbows > 0 && totalRainbows >= maxRainbows) badges.push("🌈 마음 탐험가");
   const bEl = document.getElementById("rep-badges");
   bEl.classList.toggle("hidden", !badges.length);
   bEl.textContent = badges.join("  ·  ");
   document.getElementById("report").classList.remove("hidden");
   syncProgress("done");
 }
-document.getElementById("btn-rep-home").onclick = () => {
-  document.getElementById("report").classList.add("hidden");
-  document.getElementById("title").classList.remove("hidden");
-  state = "title";
-  bgmStop();
-};
+document.getElementById("btn-rep-home").onclick = () => goHome();
 const heroImg = new Image();
 heroImg.src = "hero.png";
 document.getElementById("btn-save").onclick = () => {
@@ -1237,9 +1275,11 @@ document.getElementById("btn-save").onclick = () => {
   x.fillText(document.getElementById("rep-who").textContent, 500, 185);
   x.fillStyle = "#889"; x.font = "20px 'Jua', sans-serif";
   x.fillText(document.getElementById("rep-date").textContent, 500, 225);
-  x.fillStyle = "#333"; x.font = "27px 'Jua', sans-serif";
-  x.fillText(`✅ 내 감정 알아차리기 💛${goldS[0]||0}    ✅ 친구 마음에 공감하기 💛${goldS[1]||0}`, 500, 305);
-  x.fillText(`✅ 화는 멈춤과 숨 고르기로 💛${goldS[2]||0}    ✅ 먼저 손 내미는 공동체 💛${goldS[3]||0}`, 500, 355);
+  x.font = "27px 'Jua', sans-serif";
+  const cCell = i => (i >= playedFrom ? "✅ " : "◽ ") + ["내 감정 알아차리기", "친구 마음에 공감하기", "화는 멈춤과 숨 고르기로", "먼저 손 내미는 공동체"][i] + (i >= playedFrom && goldS[i] ? ` 💛${goldS[i]}` : "");
+  x.fillStyle = playedFrom <= 0 ? "#333" : "#333";
+  x.fillText(`${cCell(0)}    ${cCell(1)}`, 500, 305);
+  x.fillText(`${cCell(2)}    ${cCell(3)}`, 500, 355);
   x.fillStyle = "#b8860b"; x.font = "30px 'Jua', sans-serif";
   x.fillText(document.getElementById("rep-gold").textContent, 500, 425);
   x.fillStyle = "#3a7ca5"; x.font = "25px 'Jua', sans-serif";
@@ -1250,11 +1290,13 @@ document.getElementById("btn-save").onclick = () => {
     x.fillText(bEl2.textContent, 500, 520);
   }
   x.fillStyle = "#556"; x.font = "24px 'Jua', sans-serif";
-  x.fillText("네 가지 마음 기술을 모두 익혔습니다. 너의 마음 모험은 이제 진짜 시작! 💚", 500, 575);
+  x.fillText(playedFrom === 0
+    ? "네 가지 마음 기술을 모두 익혔습니다. 너의 마음 모험은 이제 진짜 시작! 💚"
+    : `${playedFrom + 1}단계부터 도전해서 마음 기술을 익혔어요! 처음부터 하면 모두 모을 수 있어요 💚`, 500, 575);
   x.fillStyle = "#99a"; x.font = "18px 'Jua', sans-serif";
   x.fillText("마음 점프! Mind Jump — 명지중학교 사회정서교육", 500, 630);
   // 저장: dataURL → Blob(동기, 사용자 제스처 유지) → 모바일은 공유 시트, PC는 다운로드
-  const who = (localStorage.getItem("mj-class") || "") + "_" + (localStorage.getItem("mj-name") || "모험가");
+  const who = (LS.get("mj-class") || "") + "_" + (LS.get("mj-name") || "모험가");
   const fname = `마음점프_수료증_${who}.png`;
   const dataUrl = c.toDataURL("image/png");
   const bin = atob(dataUrl.split(",")[1]);
@@ -1278,12 +1320,21 @@ document.getElementById("btn-next").onclick = () => {
   document.getElementById("clear").classList.add("hidden");
   loadLevel(cur + 1); state = "play";
 };
-document.getElementById("btn-home").onclick = () => {
+// 이전 스테이지: 그 스테이지부터 새로 시작(점수 재계산, 타이틀 레벨선택과 동일 규칙 — 중복집계 방지)
+document.getElementById("btn-prev").onclick = () => {
   document.getElementById("clear").classList.add("hidden");
+  startGame(Math.max(0, cur - 1));
+};
+// 처음 화면(스테이지 선택)으로
+function goHome(){
+  ["dlg", "clear", "storm", "report"].forEach(id => document.getElementById(id).classList.add("hidden"));
   document.getElementById("title").classList.remove("hidden");
+  document.getElementById("home-btn").classList.add("hidden");
   state = "title";
   bgmStop();
-};
+}
+document.getElementById("btn-home").onclick = goHome;
+document.getElementById("home-btn").onclick = goHome;
 
 /* ---------- 시작 ---------- */
 function startGame(levelIdx){
@@ -1291,18 +1342,21 @@ function startGame(levelIdx){
   totalGold = 0; totalSilver = 0; totalBronze = 0;
   goldS = [0,0,0,0]; ansS = [0,0,0,0];
   totalDeaths = 0; shieldS = [false, false, false, false];
-  // 시작한 스테이지부터 끝까지의 보석·친구 수를 목표로
-  maxGems = 0; maxHearts = 0;
+  // 시작한 스테이지부터 끝까지의 보석·친구·무지개 수를 목표로
+  playedFrom = levelIdx;
+  maxGems = 0; maxHearts = 0; maxRainbows = 0;
   for (let i = levelIdx; i < LEVELS.length; i++){
     const pl = parseLevel(i);
     maxGems += pl.gems.length;
     maxHearts += pl.npcs.length;
+    if (pl.rainbow) maxRainbows++;
   }
   // 이름·반·교실코드 저장
-  localStorage.setItem("mj-class", document.getElementById("in-class").value.trim());
-  localStorage.setItem("mj-name", document.getElementById("in-name").value.trim());
-  localStorage.setItem("mj-room", document.getElementById("in-room").value.trim().toUpperCase());
+  LS.set("mj-class", document.getElementById("in-class").value.trim());
+  LS.set("mj-name", document.getElementById("in-name").value.trim());
+  LS.set("mj-room", document.getElementById("in-room").value.trim().toUpperCase());
   document.getElementById("title").classList.add("hidden");
+  document.getElementById("home-btn").classList.remove("hidden");   // 플레이 중 처음화면 이동 버튼 노출
   loadLevel(levelIdx); state = "play";
   bgmStart();
   syncProgress("play");
@@ -1353,6 +1407,7 @@ const BG_CACHE = {};
 function bgFor(i){
   if (!BG_CACHE[i]){
     const im = new Image();
+    im.onload = () => { if (state !== "play") draw(); };   // 프리즈 화면(타이틀 등)도 로드 완료 시 1회 갱신
     im.src = "bg/bg" + (i + 1) + ".jpg";
     BG_CACHE[i] = im;
   }
@@ -1361,6 +1416,7 @@ function bgFor(i){
 
 // 주인공 3D 스프라이트 — 6포즈를 단일 아틀라스 1장으로 로드 (부분 로드/캐시로 인한 깜빡임 원천 차단)
 const HERO_ATLAS = new Image();
+HERO_ATLAS.onload = () => { if (typeof state !== "undefined" && state !== "play") draw(); };
 HERO_ATLAS.src = "hero/atlas.png";
 const HERO_FRAME = { idle: 0, walk1: 1, walk2: 2, jump: 3, fall: 4, hurt: 5 };
 const HERO_FS = 260;   // 아틀라스 한 프레임 크기
@@ -1525,6 +1581,25 @@ function draw(){
 
   // 플레이어 "마음이" — 소프트 3D 스프라이트 (로드 전 벡터 폴백)
   const p = player;
+  // 접지 그림자: 발 아래 지면을 찾아 캐릭터를 어떤 배경에서도 일관되게 바닥에 붙여줌
+  {
+    const fc = Math.floor((p.x + p.w / 2) / T);
+    let groundY = null;
+    for (let r = Math.floor((p.y + p.h) / T); r < ROWS; r++){ if (solid(fc, r)){ groundY = r * T; break; } }
+    if (groundY !== null){
+      const gap = groundY - (p.y + p.h);            // 캐릭터 바닥→지면 거리 (점프하면 커짐)
+      const t = Math.max(0, 1 - gap / 190);          // 높이 오를수록 작고 옅게
+      if (t > 0.06){
+        ctx.save();
+        ctx.globalAlpha = 0.22 * t;
+        ctx.fillStyle = "#0d1712";
+        ctx.beginPath();
+        ctx.ellipse(p.x + p.w / 2, groundY + 1.5, 15 * (0.6 + 0.4 * t), 4 * t + 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
   const mood = (p.hurtT || 0) > 0 ? "hurt"
              : state === "dialog" ? "listen"
              : !p.onGround ? (p.vy < 0 ? "jump" : "fall")
@@ -1674,8 +1749,9 @@ let last = performance.now();
 let lastDrawnState = null;
 function frame(now){
   const dt = Math.min((now - last) / 1000, 0.033);
-  last = now; time += dt;
+  last = now;
   if (state === "play"){
+    time += dt;                            // 애니메이션 시계는 플레이 중에만 진행(프리즈 후 복귀 시 튐 방지)
     update(dt); draw();                    // 플레이 중에만 60fps로 렌더
   } else if (state !== lastDrawnState){
     draw();                                // 타이틀·대화·수료증 등은 진입 시 1회만 그리고 멈춤(발열·배터리 절감)
@@ -1705,17 +1781,17 @@ function db(){
   } catch(e){ fbdb = null; }
   return fbdb;
 }
-const sid = localStorage.getItem("mj-sid") ||
-  (() => { const s = Math.random().toString(36).slice(2, 10); localStorage.setItem("mj-sid", s); return s; })();
+const sid = LS.get("mj-sid") ||
+  (() => { const s = Math.random().toString(36).slice(2, 10); LS.set("mj-sid", s); return s; })();
 let lastSync = "";
 function syncProgress(st){
-  const code = (localStorage.getItem("mj-room") || "").trim().toUpperCase();
+  const code = (LS.get("mj-room") || "").trim().toUpperCase();
   const d = db();
   if (!code || !d) return;
-  const name = (localStorage.getItem("mj-name") || "").trim() || ("모험가-" + sid.slice(0, 3));
+  const name = (LS.get("mj-name") || "").trim() || ("모험가-" + sid.slice(0, 3));
   const shields = shieldS.filter(Boolean).length;
   const data = {
-    cls: (localStorage.getItem("mj-class") || "").trim(),
+    cls: (LS.get("mj-class") || "").trim(),
     name, stage: cur + 1, state: st || state,
     hearts: totalHearts, maxHearts, gems: totalGems, rainbows: totalRainbows,
     gold: totalGold, silver: totalSilver, bronze: totalBronze,
@@ -1737,10 +1813,10 @@ setInterval(() => { if (state === "play" || state === "storm") syncProgress(); }
 
 // 이름·반·교실코드 입력 복원 (QR의 ?room= 파라미터가 우선)
 const urlRoom = new URLSearchParams(location.search).get("room");
-if (urlRoom) localStorage.setItem("mj-room", urlRoom.trim().toUpperCase());
-document.getElementById("in-class").value = localStorage.getItem("mj-class") || "";
-document.getElementById("in-name").value = localStorage.getItem("mj-name") || "";
-document.getElementById("in-room").value = localStorage.getItem("mj-room") || "";
+if (urlRoom) LS.set("mj-room", urlRoom.trim().toUpperCase());
+document.getElementById("in-class").value = LS.get("mj-class") || "";
+document.getElementById("in-name").value = LS.get("mj-name") || "";
+document.getElementById("in-room").value = LS.get("mj-room") || "";
 
 // PWA 서비스워커 (배포 환경에서만)
 if ("serviceWorker" in navigator && location.protocol === "https:")

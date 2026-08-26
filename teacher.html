@@ -58,6 +58,16 @@
   #domains .chip b{ color:var(--mint); }
   #domains .chip.low{ background:#4a3520; }
   #domains .chip.low b{ color:#f3b06a; }
+  #rank-bar{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .rank-note{ font-size:12px; color:#c9a56a; max-width:520px; line-height:1.5; }
+  #rank-panel{ background:#1d222b; border:1px solid #4a3a20; border-radius:14px; padding:14px 18px 10px; margin-bottom:18px; }
+  #rank-panel h3{ font-size:16px; color:#f3c26a; margin-bottom:10px; }
+  .rank-row{ display:flex; align-items:center; gap:12px; padding:8px 6px; border-radius:8px; font-size:15px; }
+  .rank-row:nth-child(even){ background:rgba(255,255,255,.035); }
+  .rank-num{ width:36px; font-size:18px; text-align:center; flex:none; }
+  .rank-name{ flex:1; }
+  .rank-score{ color:var(--mint); font-weight:bold; flex:none; }
+  .rank-sub{ font-size:12px; color:#8b97a5; }
   #grid{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:12px;
   }
@@ -102,6 +112,11 @@
     <div id="summary"></div>
   </div>
   <div id="domains" class="hidden"></div>
+  <div id="rank-bar">
+    <button id="rank-toggle" class="btn ghost">🏅 순위 보기 (교사 전용)</button>
+    <span class="rank-note">※ 교사 확인용이에요. 투사(발표) 중엔 접어두고, 개인 기기에서만 펼쳐 보세요 — 학생 서열은 화면에 띄우지 않는 걸 권해요.</span>
+  </div>
+  <div id="rank-panel" class="hidden"></div>
   <div id="grid"><div id="empty">아직 입장한 학생이 없어요.<br>게임 첫 화면에서 교실 코드를 입력하면 여기에 나타납니다 🌱</div></div>
 </div>
 
@@ -115,6 +130,13 @@ const FB_CONFIG = {
   messagingSenderId: "640879942374",
   appId: "1:640879942374:web:072026fb598ddc39777927"
 };
+// Firebase CDN 로드 실패(네트워크 차단 등) 시 흰 화면 대신 안내
+if (typeof firebase === "undefined" || !firebase.initializeApp){
+  document.body.innerHTML =
+    '<div style="max-width:480px;margin:16vh auto;text-align:center;color:#e8ecf1;font-family:Jua,sans-serif;line-height:1.8;">' +
+    '<h2>😢 연결을 불러오지 못했어요</h2><p style="color:#9aa5b3;">인터넷 연결을 확인하고 새로고침해 주세요.<br>(교사 발표 모드는 실시간 연결이 필요해요.)</p></div>';
+  throw new Error("Firebase SDK not loaded");
+}
 firebase.initializeApp(FB_CONFIG);
 const db = firebase.firestore();
 
@@ -148,13 +170,48 @@ function startLive(code){
   listen(code, 0);
 }
 
-const stageInfo = s =>
-  s.state === "done"  ? { txt: "🏆 완주!", cls: "done" } :
-  s.state === "storm" ? { txt: "⛈️ 마음의 폭풍", cls: "storm" } :
-  s.state === "clear" ? { txt: `${s.stage}단계 클리어 🚩`, cls: "s" + s.stage } :
-                        { txt: `${s.stage}단계 모험 중 🏃`, cls: "s" + s.stage };
+// 학생이 입력한 이름·반 등은 신뢰 불가 → HTML 이스케이프 + 숫자 강제 변환(XSS 방지)
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
+  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const num = v => (Number(v) || 0);
+const stageInfo = s => {
+  const st = Math.max(1, Math.min(4, num(s.stage) || 1));
+  return s.state === "done"  ? { txt: "🏆 완주!", cls: "done" } :
+         s.state === "storm" ? { txt: "⛈️ 마음의 폭풍", cls: "storm" } :
+         s.state === "clear" ? { txt: `${st}단계 클리어 🚩`, cls: "s" + st } :
+                               { txt: `${st}단계 모험 중 🏃`, cls: "s" + st };
+};
 
 let lastUpdate = {};
+// 교사 전용 순위: 마음 점수(SEL 이해도, 게임 실력 아님) 기준
+function renderRank(scored){
+  const panel = document.getElementById("rank-panel");
+  if (!scored.length){
+    panel.innerHTML = '<h3>🏅 마음 점수 순위 (교사 전용)</h3><div class="rank-sub">아직 점수가 있는 학생이 없어요.</div>';
+    return;
+  }
+  const ranked = [...scored].sort((a, b) =>
+    (b.mind || 0) - (a.mind || 0) ||
+    (b.hearts || 0) - (a.hearts || 0) ||
+    (b.gold || 0) - (a.gold || 0));
+  const medal = i => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (i + 1) + ".";
+  panel.innerHTML =
+    '<h3>🏅 마음 점수 순위 <span class="rank-sub">(교사 전용 · 마음 이해도 기준, 게임 실력 아님)</span></h3>' +
+    ranked.map((r, i) =>
+      `<div class="rank-row">
+        <div class="rank-num">${medal(i)}</div>
+        <div class="rank-name">${esc(r.name) || "?"} <span class="rank-sub">${esc(r.cls)}</span></div>
+        <div class="rank-score">💛 ${num(r.mind)}/60</div>
+        <div class="rank-sub">금${num(r.gold)}·은${num(r.silver)}·동${num(r.bronze)}${r.state === "done" ? " · 🏆완주" : ""}</div>
+      </div>`).join("");
+}
+
+document.getElementById("rank-toggle").onclick = () => {
+  const p = document.getElementById("rank-panel");
+  const hidden = p.classList.toggle("hidden");
+  document.getElementById("rank-toggle").textContent = hidden ? "🏅 순위 보기 (교사 전용)" : "🏅 순위 접기";
+};
+
 function render(snap){
   const grid = document.getElementById("grid");
   const rows = [];
@@ -190,6 +247,8 @@ function render(snap){
       (valid.length > 1 ? `<span class="dlbl">— 주황색 영역을 수업에서 함께 이야기해 보세요</span>` : "");
   } else dEl.classList.add("hidden");
 
+  renderRank(scored);
+
   if (!rows.length) return;
   grid.innerHTML = "";
   for (const r of rows){
@@ -201,10 +260,10 @@ function render(snap){
     if (lastUpdate[r.id] && lastUpdate[r.id] !== key) card.classList.add("fresh");
     lastUpdate[r.id] = key;
     card.innerHTML =
-      `<div class="who">${r.name || "?"} <small>${r.cls || ""}</small></div>` +
+      `<div class="who">${esc(r.name) || "?"} <small>${esc(r.cls)}</small></div>` +
       `<div class="st">${info.txt}</div>` +
       `<div class="bar"><i style="width:${pct}%"></i></div>` +
-      `<div class="nums">💛${r.gold || 0} 🤍${r.silver || 0} 🤎${r.bronze || 0} · 🛡️${r.shields || 0} · 💎${r.gems || 0} · 🌈${r.rainbows || 0}</div>`;
+      `<div class="nums">💛${num(r.gold)} 🤍${num(r.silver)} 🤎${num(r.bronze)} · 🛡️${num(r.shields)} · 💎${num(r.gems)} · 🌈${num(r.rainbows)}</div>`;
     grid.appendChild(card);
     setTimeout(() => card.classList.remove("fresh"), 600);
   }

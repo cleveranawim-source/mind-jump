@@ -1,6 +1,6 @@
 /* 마음 점프! 서비스워커 — 오프라인 지원
    index.html은 network-first(항상 최신), 나머지는 cache-first */
-const CACHE = "mind-jump-v6";
+const CACHE = "mind-jump-v7";
 const ASSETS = [
   "./", "./index.html", "./teacher.html", "./manifest.json",
   "./icon-192.png", "./icon-512.png", "./hero.png",
@@ -9,7 +9,10 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // 자산 하나가 실패해도 설치가 통째로 실패하지 않도록 개별 캐싱(best-effort)
+  e.waitUntil(caches.open(CACHE)
+    .then(c => Promise.all(ASSETS.map(a => c.add(a).catch(() => {}))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", e => {
@@ -26,7 +29,11 @@ self.addEventListener("fetch", e => {
   if (e.request.mode === "navigate"){
     e.respondWith(
       fetch(e.request)
-        .then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); return r; })
+        .then(r => {
+          // 정상(200) 응답만 캐시 — 오류·캡티브포털·리다이렉트 응답이 오프라인 폴백을 오염시키지 않게
+          if (r.ok && r.type === "basic"){ const cp = r.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); }
+          return r;
+        })
         .catch(() => caches.match(e.request).then(hit => hit || caches.match("./index.html")))
     );
     return;
