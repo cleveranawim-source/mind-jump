@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
 <style>
   :root{ --mint:#3FE5A0; --dark:#14171c; --card:#ffffff; }
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -1771,15 +1772,27 @@ const FB_CONFIG = {
   messagingSenderId: "640879942374",
   appId: "1:640879942374:web:072026fb598ddc39777927"
 };
-let fbdb = null;
+// 개발 PC에서 ?emu 를 붙여 열 때만 로컬 에뮬레이터로 (배포 주소 github.io 에서는 절대 켜지지 않음)
+const FB_EMU = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has("emu");
+let fbdb = null, fbUid = null, fbAuthP = null;
 function db(){
   if (fbdb) return fbdb;
   try {
-    if (!window.firebase || !firebase.firestore) return null;   // CDN 로드 전/차단 시 조용히 패스
+    if (!window.firebase || !firebase.firestore || !firebase.auth) return null;   // CDN 로드 전/차단 시 조용히 패스
     if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
     fbdb = firebase.firestore();
+    if (FB_EMU){ fbdb.useEmulator("127.0.0.1", 8080); firebase.auth().useEmulator("http://127.0.0.1:9099"); }
   } catch(e){ fbdb = null; }
   return fbdb;
+}
+// 익명 로그인(보안 규칙: 로그인한 사람이 '내 문서'에만 쓸 수 있음).
+// 같은 기기·브라우저면 다음 수업에도 같은 uid 가 그대로 유지된다.
+function fbAuth(){
+  if (fbUid) return Promise.resolve(fbUid);
+  if (!fbAuthP) fbAuthP = firebase.auth().signInAnonymously()
+    .then(c => (fbUid = c.user.uid))
+    .catch(e => { fbAuthP = null; throw e; });
+  return fbAuthP;
 }
 const sid = LS.get("mj-sid") ||
   (() => { const s = Math.random().toString(36).slice(2, 10); LS.set("mj-sid", s); return s; })();
@@ -1804,10 +1817,12 @@ function syncProgress(st){
   if (key === lastSync) return;      // 변화 없으면 쓰기 생략
   lastSync = key;
   try {
-    d.collection("rooms").doc(code).collection("students").doc(sid)
-      .set({ ...data, t: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true })
-      .catch(() => {});
-  } catch(e){}
+    // 문서 ID = 익명 로그인 uid (규칙이 내 uid 문서만 쓰게 함)
+    fbAuth()
+      .then(uid => d.collection("rooms").doc(code).collection("students").doc(uid)
+        .set({ ...data, t: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }))
+      .catch(() => { lastSync = ""; });   // 실패하면 다음 동기화 때 다시 시도
+  } catch(e){ lastSync = ""; }
 }
 setInterval(() => { if (state === "play" || state === "storm") syncProgress(); }, 12000);
 

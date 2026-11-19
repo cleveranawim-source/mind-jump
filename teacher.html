@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
   :root{ --mint:#3FE5A0; --dark:#14171c; }
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -131,7 +132,7 @@ const FB_CONFIG = {
   appId: "1:640879942374:web:072026fb598ddc39777927"
 };
 // Firebase CDN 로드 실패(네트워크 차단 등) 시 흰 화면 대신 안내
-if (typeof firebase === "undefined" || !firebase.initializeApp){
+if (typeof firebase === "undefined" || !firebase.initializeApp || !firebase.auth){
   document.body.innerHTML =
     '<div style="max-width:480px;margin:16vh auto;text-align:center;color:#e8ecf1;font-family:Jua,sans-serif;line-height:1.8;">' +
     '<h2>😢 연결을 불러오지 못했어요</h2><p style="color:#9aa5b3;">인터넷 연결을 확인하고 새로고침해 주세요.<br>(교사 발표 모드는 실시간 연결이 필요해요.)</p></div>';
@@ -139,6 +140,16 @@ if (typeof firebase === "undefined" || !firebase.initializeApp){
 }
 firebase.initializeApp(FB_CONFIG);
 const db = firebase.firestore();
+// 개발 PC에서 ?emu 를 붙여 열 때만 로컬 에뮬레이터로 (배포 주소에서는 켜지지 않음)
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has("emu")){
+  db.useEmulator("127.0.0.1", 8080); firebase.auth().useEmulator("http://127.0.0.1:9099");
+}
+// 보안 규칙: 익명 로그인한 사람만 읽을 수 있다 → 교사 화면도 먼저 익명 로그인
+let authP = null;
+function signIn(){
+  if (!authP) authP = firebase.auth().signInAnonymously().catch(e => { authP = null; throw e; });
+  return authP;
+}
 
 const GAME_URL = "https://cleveranawim-source.github.io/mind-jump/";
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // 헷갈리는 I·O·0·1 제외
@@ -167,7 +178,10 @@ function startLive(code){
   document.getElementById("code-big").textContent = code;
   document.getElementById("qr").src =
     "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(GAME_URL + "?room=" + code);
-  listen(code, 0);
+  signIn().then(() => listen(code, 0)).catch(() => {
+    document.getElementById("summary").innerHTML =
+      '<span style="color:#ffb27a;">😢 실시간 연결(익명 로그인)에 실패했어요. 잠시 뒤 새로고침해 주세요.</span>';
+  });
 }
 
 // 학생이 입력한 이름·반 등은 신뢰 불가 → HTML 이스케이프 + 숫자 강제 변환(XSS 방지)
