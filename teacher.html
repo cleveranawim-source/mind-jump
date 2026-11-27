@@ -10,23 +10,45 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
-  :root{ --mint:#3FE5A0; --dark:#14171c; }
+  :root{
+    --mint:#3FE5A0; --dark:#14171c; --card:#1d222b; --line:#2a313c; --dim:#9aa5b3;
+    --apricot:#f3b06a;                         /* 주의 = 살구 */
+    --s1:#58c26a; --s2:#3fa8d8; --s3:#e8843c; --s4:#9d8fd8;   /* 단계색 = 점수 */
+  }
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{
     background:var(--dark); color:#e8ecf1; min-height:100vh;
     font-family:"Jua","Apple SD Gothic Neo",sans-serif;
-    padding:24px 16px; display:flex; flex-direction:column; align-items:center;
+    padding:20px 16px 40px; display:flex; flex-direction:column; align-items:center;
+    word-break:keep-all; overflow-wrap:break-word;
   }
-  h1{ font-size:24px; margin-bottom:16px; }
-  h1 .mint{ color:var(--mint); }
   .hidden{ display:none !important; }
+  .wrap{ width:100%; max-width:1200px; }
 
-  #setup{ background:#1d222b; border-radius:16px; padding:28px; text-align:center; max-width:520px; width:100%; }
-  #setup p{ color:#9aa5b3; font-size:14px; line-height:1.8; margin-bottom:16px; }
+  /* 머리 그림 */
+  .hero{
+    position:relative; border-radius:18px; overflow:hidden; min-height:150px; margin-bottom:18px;
+    padding:28px 32px; display:flex; flex-direction:column; justify-content:center;
+    background:#7cc6ee url(bg/teacher_head.webp) right center/cover no-repeat;
+  }
+  .hero::before{ content:""; position:absolute; inset:0;
+    background:linear-gradient(90deg, rgba(14,24,30,.86) 0%, rgba(14,24,30,.55) 40%, rgba(14,24,30,0) 70%); }
+  .hero > *{ position:relative; }
+  .hero h1{ font-size:30px; text-shadow:0 2px 12px rgba(0,0,0,.5); }
+  .hero h1 .mint{ color:var(--mint); }
+  .hero .sub{ color:#d6e2ec; margin-top:8px; font-size:15px; }
+
+  .card{ background:var(--card); border-radius:16px; padding:18px 22px; margin-bottom:16px; }
+  .card h2{ font-size:18px; margin-bottom:12px; color:#dfe7ef; }
+  .card h2 small{ font-size:13px; color:var(--dim); margin-left:6px; }
+
+  #setup{ text-align:center; max-width:560px; margin:0 auto; }
+  #setup p{ color:var(--dim); font-size:15px; line-height:1.8; margin-bottom:16px; }
   #setup input{
     font-family:inherit; font-size:26px; text-align:center; letter-spacing:6px; text-transform:uppercase;
-    width:220px; background:#12151b; color:var(--mint); border:2px solid #333b47; border-radius:12px; padding:12px; outline:none;
+    width:240px; max-width:100%; background:#12151b; color:var(--mint); border:2px solid #333b47; border-radius:12px; padding:12px; outline:none;
   }
   #setup input:focus{ border-color:var(--mint); }
   .btn{
@@ -36,46 +58,83 @@
   }
   .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #23a06c; }
   .btn.ghost{ background:#2a313c; color:#cdd6e0; box-shadow:0 4px 0 #1a1f27; }
+  .btn.small{ font-size:14px; padding:9px 14px; }
 
-  #live{ width:100%; max-width:1200px; }
-  #head-row{
-    display:flex; align-items:center; gap:24px; flex-wrap:wrap;
-    background:#1d222b; border-radius:16px; padding:18px 24px; margin-bottom:18px;
-  }
-  #code-big{ font-size:44px; color:var(--mint); letter-spacing:8px; }
-  #head-row .lbl{ font-size:14px; color:#9aa5b3; }
-  #qr{ width:110px; height:110px; border-radius:10px; background:#fff; padding:6px; }
-  #summary{ font-size:18px; line-height:1.9; margin-left:auto; text-align:right; }
-  #summary b{ color:var(--mint); }
+  /* 입장 줄 */
+  #head-row{ display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+  #code-big{ font-size:46px; color:var(--mint); letter-spacing:8px; }
+  .lbl{ font-size:14px; color:var(--dim); }
+  #qr{ width:120px; height:120px; border-radius:10px; background:#fff; padding:6px; display:block; margin:0 auto; }
+  #qrUrl{ font-size:12px; color:var(--dim); word-break:break-all; max-width:240px; }
+  #summary{ margin-left:auto; display:flex; gap:12px; flex-wrap:wrap; }
+  .stat{ background:#161a21; border-radius:14px; padding:10px 18px; text-align:center; min-width:104px; }
+  .stat b{ display:block; font-size:34px; color:var(--mint); line-height:1.2; }
+  .stat span{ font-size:13px; color:var(--dim); }
 
-  #domains{
-    background:#1d222b; border-radius:16px; padding:12px 18px; margin-bottom:18px;
-    display:flex; align-items:center; flex-wrap:wrap; gap:8px;
-  }
-  #domains .dlbl{ color:#8b97a5; font-size:13px; margin-right:6px; }
-  #domains .chip{
-    background:#2a313c; border-radius:99px; padding:7px 16px; font-size:15px;
-  }
-  #domains .chip b{ color:var(--mint); }
-  #domains .chip.low{ background:#4a3520; }
-  #domains .chip.low b{ color:#f3b06a; }
-  #rank-bar{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
-  .rank-note{ font-size:12px; color:#c9a56a; max-width:520px; line-height:1.5; }
-  #rank-panel{ background:#1d222b; border:1px solid #4a3a20; border-radius:14px; padding:14px 18px 10px; margin-bottom:18px; }
+  /* 단계별 인원 */
+  #stages{ display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:8px; }
+  .stg{ background:#161a21; border-radius:12px; padding:10px 6px; text-align:center; border-top:4px solid #4a5563; }
+  .stg b{ display:block; font-size:28px; }
+  .stg span{ font-size:13px; color:var(--dim); }
+  .stg.s1{ border-top-color:var(--s1); } .stg.s1 b{ color:var(--s1); }
+  .stg.s2{ border-top-color:var(--s2); } .stg.s2 b{ color:var(--s2); }
+  .stg.s3{ border-top-color:var(--s3); } .stg.s3 b{ color:var(--s3); }
+  .stg.s4{ border-top-color:var(--s4); } .stg.s4 b{ color:var(--s4); }
+  .stg.storm{ border-top-color:#f3c53d; } .stg.storm b{ color:#f3c53d; }
+  .stg.done{ border-top-color:var(--mint); } .stg.done b{ color:var(--mint); }
+
+  /* 영역별 첫 시도 정답률 — 2×2 크게 */
+  #domainGrid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+  .dom{ background:#161a21; border-radius:14px; padding:16px 18px; border-left:6px solid #4a5563; }
+  .dom .dn{ font-size:22px; }
+  .dom .dv{ font-size:36px; line-height:1.3; }
+  .dom .dd{ font-size:13px; color:var(--dim); }
+  .dom.s1{ border-left-color:var(--s1); } .dom.s1 .dv{ color:var(--s1); }
+  .dom.s2{ border-left-color:var(--s2); } .dom.s2 .dv{ color:var(--s2); }
+  .dom.s3{ border-left-color:var(--s3); } .dom.s3 .dv{ color:var(--s3); }
+  .dom.s4{ border-left-color:var(--s4); } .dom.s4 .dv{ color:var(--s4); }
+  .dom.low{ background:#3a2c1d; box-shadow:inset 0 0 0 2px var(--apricot); }
+  .dom .tag{ display:inline-block; margin-left:8px; font-size:13px; color:#2a1a08; background:var(--apricot);
+    border-radius:99px; padding:2px 10px; vertical-align:middle; }
+  .dom.none .dv{ color:#5d6876; }
+
+  /* 마음 날씨 */
+  .moodTbl{ display:grid; grid-template-columns:92px repeat(5, minmax(0,1fr)); gap:6px 8px; align-items:center; text-align:center; }
+  .moodTbl img{ width:48px; height:auto; display:block; margin:0 auto; }
+  .moodTbl .rl{ text-align:left; color:var(--dim); font-size:14px; }
+  .moodTbl .mc{ font-size:28px; color:#e8ecf1; }
+  .moodTbl .mc.zero{ color:rgba(255,255,255,.2); }
+  .moodTbl .ml{ font-size:12px; color:var(--dim); }
+  .moodFoot{ margin-top:12px; font-size:15px; color:var(--dim); display:flex; gap:18px; flex-wrap:wrap; }
+  .moodFoot b{ font-size:22px; color:#e8ecf1; margin:0 2px; }
+  .moodFoot .up b{ color:var(--mint); } .moodFoot .down b{ color:var(--apricot); }
+
+  /* 실천 계획 벽 */
+  #planWall{ display:flex; flex-wrap:wrap; gap:10px; }
+  .pchip{ background:#1c2b24; border:1px solid #2f5a45; border-radius:14px; padding:10px 14px; font-size:16px; line-height:1.5; max-width:100%; }
+  /* 프로젝터 기본 화면엔 '무엇을'만. '언제'·이름·누구에게는 교사 전용을 열었을 때만 */
+  .pchip .pw{ display:none; font-size:12px; color:var(--dim); }
+  .pchip .by{ display:none; font-size:12px; color:#f3c26a; }
+  body.priv .pchip .pw, body.priv .pchip .by{ display:block; }
+  .emptyNote{ color:#67727f; font-size:15px; line-height:1.8; }
+
+  /* 교사 전용 */
+  #privBar{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:6px 0 12px; }
+  #btn-priv{ background:#3a3220; color:#ffe9a8; box-shadow:0 4px 0 #241f14; }
+  #privBar .hint{ font-size:13px; color:var(--dim); max-width:560px; line-height:1.6; }
+  #privSec{ display:none; }
+  body.priv #privSec{ display:block; }
+  .privTools{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  #rank-panel{ background:#1d222b; border:1px solid #4a3a20; border-radius:14px; padding:14px 18px 10px; margin-bottom:14px; }
   #rank-panel h3{ font-size:16px; color:#f3c26a; margin-bottom:10px; }
   .rank-row{ display:flex; align-items:center; gap:12px; padding:8px 6px; border-radius:8px; font-size:15px; }
   .rank-row:nth-child(even){ background:rgba(255,255,255,.035); }
   .rank-num{ width:36px; font-size:18px; text-align:center; flex:none; }
   .rank-name{ flex:1; }
-  .rank-score{ color:var(--mint); font-weight:bold; flex:none; }
+  .rank-score{ color:var(--mint); flex:none; }
   .rank-sub{ font-size:12px; color:#8b97a5; }
-  #grid{
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:12px;
-  }
-  .stu{
-    background:#1d222b; border-radius:14px; padding:14px 16px;
-    border-left:5px solid #4a5563; transition:border-color .3s, transform .2s;
-  }
+  #grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; }
+  .stu{ background:#1d222b; border-radius:14px; padding:14px 16px; border-left:5px solid #4a5563; transition:transform .2s; }
   .stu.fresh{ transform:scale(1.03); }
   .stu .who{ font-size:17px; margin-bottom:6px; }
   .stu .who small{ color:#8b97a5; font-size:12px; margin-left:4px; }
@@ -83,42 +142,103 @@
   .stu .bar{ height:8px; background:#2a313c; border-radius:99px; overflow:hidden; margin-bottom:6px; }
   .stu .bar i{ display:block; height:100%; background:var(--mint); border-radius:99px; transition:width .4s; }
   .stu .nums{ font-size:13px; color:#9aa5b3; }
-  .stu.s1{ border-left-color:#58c26a; } .stu.s2{ border-left-color:#3fa8d8; }
-  .stu.s3{ border-left-color:#e8843c; } .stu.s4{ border-left-color:#9d8fd8; }
+  .stu .nums span{ white-space:nowrap; }
+  .stu .mood{ font-size:13px; color:#cdd6e0; margin-top:6px; }
+  .stu .plan{ font-size:13px; color:var(--mint); margin-top:4px; line-height:1.5; }
+  .stu.s1{ border-left-color:var(--s1); } .stu.s2{ border-left-color:var(--s2); }
+  .stu.s3{ border-left-color:var(--s3); } .stu.s4{ border-left-color:var(--s4); }
   .stu.storm{ border-left-color:#f3c53d; } .stu.done{ border-left-color:var(--mint); background:#1c2b24; }
-  #empty{ color:#67727f; font-size:16px; text-align:center; padding:60px 0; grid-column:1/-1; line-height:1.9; }
+  #empty{ color:#67727f; font-size:16px; text-align:center; padding:40px 0; grid-column:1/-1; line-height:1.9; }
+  .sign{ margin-top:22px; font-size:13px; color:#67727f; text-align:center; }
+
+  @media (max-width:640px){
+    .hero{ padding:22px 20px; min-height:120px; background-position:72% center; }
+    .hero::before{ background:linear-gradient(90deg, rgba(14,24,30,.88), rgba(14,24,30,.5)); }
+    .hero h1{ font-size:23px; }
+    #summary{ margin-left:0; width:100%; }
+    .stat{ flex:1; min-width:0; padding:8px; }
+    .stat b{ font-size:26px; }
+    #stages{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+    #domainGrid{ grid-template-columns:1fr; }
+    .dom .dn{ font-size:19px; } .dom .dv{ font-size:30px; }
+    .moodTbl{ grid-template-columns:62px repeat(5, minmax(0,1fr)); gap:6px 4px; }
+    .moodTbl img{ width:34px; } .moodTbl .rl{ font-size:12px; } .moodTbl .mc{ font-size:22px; } .moodTbl .ml{ font-size:11px; }
+  }
 </style>
 </head>
 <body>
-<h1>🍄 마음 점프! <span class="mint">교사 발표 모드</span></h1>
+<div class="wrap">
+  <header class="hero">
+    <h1>🍄 마음 점프! <span class="mint">교사 화면</span></h1>
+    <div class="sub">LevLab Yeol · 사회정서교육 — 감정·공감·화 다스리기·공동체</div>
+  </header>
 
-<div id="setup">
-  <p>교실 코드를 만들어 화면에 띄워 주세요.<br>
-     학생들이 게임 첫 화면에 코드를 입력하거나 QR을 찍으면<br>이 화면에 진행 상황이 실시간으로 나타납니다.</p>
-  <input id="code" placeholder="CODE" maxlength="8"><br>
-  <button class="btn ghost" id="btn-new">🎲 코드 만들기</button>
-  <button class="btn" id="btn-go">발표 시작 ▶</button>
-</div>
+  <div id="setup" class="card">
+    <p>교실 코드를 만들어 화면에 띄워 주세요.<br>
+       학생들이 게임 첫 화면에 코드를 넣거나 QR을 찍으면<br>이 화면에 반 전체 진행이 실시간으로 나타납니다.</p>
+    <input id="code" placeholder="CODE" maxlength="8"><br>
+    <button class="btn ghost" id="btn-new">🎲 코드 만들기</button>
+    <button class="btn" id="btn-go">발표 시작 ▶</button>
+  </div>
 
-<div id="live" class="hidden">
-  <div id="head-row">
-    <div>
-      <div class="lbl">교실 코드</div>
-      <div id="code-big"></div>
+  <div id="live" class="hidden">
+    <div class="card" id="head-row">
+      <div>
+        <div class="lbl">교실 코드</div>
+        <div id="code-big"></div>
+      </div>
+      <div style="text-align:center;">
+        <img id="qr" alt="게임 입장 QR">
+        <div id="qrUrl" class="hidden"></div>
+        <div class="lbl">QR로 바로 입장</div>
+      </div>
+      <div id="summary">
+        <div class="stat"><b id="sum-n">0</b><span>참여</span></div>
+        <div class="stat"><b id="sum-done">0</b><span>완주</span></div>
+        <div class="stat"><b id="sum-mind">–</b><span>마음 점수 평균 /60</span></div>
+      </div>
     </div>
-    <div style="text-align:center;">
-      <img id="qr" alt="QR">
-      <div class="lbl">QR로 바로 입장</div>
+
+    <div class="card">
+      <h2>🗺️ 지금 어디쯤? <small>반 전체 인원</small></h2>
+      <div id="stages"></div>
     </div>
-    <div id="summary"></div>
+
+    <div class="card">
+      <h2>🎯 영역별 첫 시도 정답률 <small>반 전체 · 살구색 영역을 수업에서 함께 이야기해 보세요</small></h2>
+      <div id="domainGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>🌤️ 우리 반 마음 날씨 <small>고른 학생만 · 사람 수</small></h2>
+      <div class="moodTbl" id="moodTbl"></div>
+      <div class="moodFoot">
+        <span class="up">맑아짐 <b id="mood-up">0</b>명</span>
+        <span>그대로 <b id="mood-same">0</b>명</span>
+        <span class="down">흐려짐 <b id="mood-down">0</b>명</span>
+        <span>· 처음과 끝을 둘 다 고른 학생만 셉니다</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📝 우리 반 실천 계획 <small>이름 없이 '무엇을'만 보여요</small></h2>
+      <div id="planWall"><div class="emptyNote">아직 쓴 계획이 없어요. 폭풍을 걷어 낸 학생이 쓰면 여기에 나타나요.</div></div>
+    </div>
+
+    <div id="privBar">
+      <button class="btn ghost" id="btn-priv">👤 학생별 보기 (교사 전용)</button>
+      <span class="hint">프로젝터에 비치지 않을 때 여세요. 열면 학생별 카드·순위·계획 쓴 사람·CSV 저장이 보입니다.</span>
+    </div>
+    <div id="privSec">
+      <div class="privTools">
+        <button class="btn ghost small" id="btn-csv">📥 결과 저장 (CSV — 엑셀용)</button>
+        <button class="btn ghost small" id="rank-toggle">🏅 순위 보기</button>
+      </div>
+      <div id="rank-panel" class="hidden"></div>
+      <div id="grid"><div id="empty">아직 입장한 학생이 없어요.<br>게임 첫 화면에서 교실 코드를 넣으면 여기에 나타납니다 🌱</div></div>
+    </div>
   </div>
-  <div id="domains" class="hidden"></div>
-  <div id="rank-bar">
-    <button id="rank-toggle" class="btn ghost">🏅 순위 보기 (교사 전용)</button>
-    <span class="rank-note">※ 교사 확인용이에요. 투사(발표) 중엔 접어두고, 개인 기기에서만 펼쳐 보세요 — 학생 서열은 화면에 띄우지 않는 걸 권해요.</span>
-  </div>
-  <div id="rank-panel" class="hidden"></div>
-  <div id="grid"><div id="empty">아직 입장한 학생이 없어요.<br>게임 첫 화면에서 교실 코드를 입력하면 여기에 나타납니다 🌱</div></div>
+  <div class="sign">만든 사람 LevLab Yeol</div>
 </div>
 
 <script>
@@ -135,15 +255,14 @@ const FB_CONFIG = {
 if (typeof firebase === "undefined" || !firebase.initializeApp || !firebase.auth){
   document.body.innerHTML =
     '<div style="max-width:480px;margin:16vh auto;text-align:center;color:#e8ecf1;font-family:Jua,sans-serif;line-height:1.8;">' +
-    '<h2>😢 연결을 불러오지 못했어요</h2><p style="color:#9aa5b3;">인터넷 연결을 확인하고 새로고침해 주세요.<br>(교사 발표 모드는 실시간 연결이 필요해요.)</p></div>';
+    '<h2>😢 연결을 불러오지 못했어요</h2><p style="color:#9aa5b3;">인터넷 연결을 확인하고 새로고침해 주세요.<br>(교사 화면은 실시간 연결이 필요해요.)</p></div>';
   throw new Error("Firebase SDK not loaded");
 }
 firebase.initializeApp(FB_CONFIG);
 const db = firebase.firestore();
 // 개발 PC에서 ?emu 를 붙여 열 때만 로컬 에뮬레이터로 (배포 주소에서는 켜지지 않음)
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has("emu")){
-  db.useEmulator("127.0.0.1", 8080); firebase.auth().useEmulator("http://127.0.0.1:9099");
-}
+const EMU = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has("emu");
+if (EMU){ db.useEmulator("127.0.0.1", 8080); firebase.auth().useEmulator("http://127.0.0.1:9099"); }
 // 보안 규칙: 익명 로그인한 사람만 읽을 수 있다 → 교사 화면도 먼저 익명 로그인
 let authP = null;
 function signIn(){
@@ -151,13 +270,31 @@ function signIn(){
   return authP;
 }
 
+const $ = s => document.querySelector(s);
 const GAME_URL = "https://cleveranawim-source.github.io/mind-jump/";
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // 헷갈리는 I·O·0·1 제외
+const MOOD_LBL = ["", "폭풍", "비", "흐림", "구름 조금", "맑음"];
+const DOMAINS = ["감정 알아차리기", "친구 마음 공감", "화 다스리기", "함께하는 공동체"];
 
-document.getElementById("btn-new").onclick = () => {
-  let c = "";
-  for (let i = 0; i < 4; i++) c += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-  document.getElementById("code").value = c;
+// 6글자 코드 (반끼리 겹칠 일이 거의 없게). 예전 4글자 코드도 그대로 쓸 수 있다.
+$("#btn-new").onclick = () => {
+  const r = new Uint32Array(6); crypto.getRandomValues(r);
+  $("#code").value = [...r].map(v => ALPHABET[v % ALPHABET.length]).join("");
+};
+
+// QR은 이 페이지 안에서 그린다 (바깥 QR 서비스로 교실 코드를 보내지 않음)
+function makeQR(text){
+  try { const q = qrcode(0, "M"); q.addData(text); q.make(); return q.createDataURL(6, 2); }
+  catch(e){ return null; }
+}
+
+$("#btn-priv").onclick = () => {
+  const on = document.body.classList.toggle("priv");
+  $("#btn-priv").textContent = on ? "🙈 학생별 기록 닫기" : "👤 학생별 보기 (교사 전용)";
+};
+$("#rank-toggle").onclick = () => {
+  const hidden = $("#rank-panel").classList.toggle("hidden");
+  $("#rank-toggle").textContent = hidden ? "🏅 순위 보기" : "🏅 순위 접기";
 };
 
 let unsub = null, gotSnap = false;
@@ -172,22 +309,28 @@ function listen(code, attempt){
   // 첫 스냅샷이 3초 안에 안 오면 리스너 재부착 (연결 초기화 꼬임 대비)
   setTimeout(() => { if (!gotSnap && attempt < 6) listen(code, attempt + 1); }, 3000);
 }
+let curCode = "";
 function startLive(code){
-  document.getElementById("setup").classList.add("hidden");
-  document.getElementById("live").classList.remove("hidden");
-  document.getElementById("code-big").textContent = code;
-  document.getElementById("qr").src =
-    "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(GAME_URL + "?room=" + code);
+  curCode = code;
+  $("#setup").classList.add("hidden");
+  $("#live").classList.remove("hidden");
+  $("#code-big").textContent = code;
+  const url = GAME_URL + "?room=" + encodeURIComponent(code);
+  const qr = makeQR(url);
+  if (qr) $("#qr").src = qr;
+  else { $("#qr").classList.add("hidden"); $("#qrUrl").classList.remove("hidden"); $("#qrUrl").textContent = url; }
+  render({ forEach(){} });      // 빈 판부터 그려 둔다
   signIn().then(() => listen(code, 0)).catch(() => {
-    document.getElementById("summary").innerHTML =
-      '<span style="color:#ffb27a;">😢 실시간 연결(익명 로그인)에 실패했어요. 잠시 뒤 새로고침해 주세요.</span>';
+    $("#summary").insertAdjacentHTML("beforeend",
+      '<div style="color:#ffb27a;font-size:15px;">😢 실시간 연결(익명 로그인)에 실패했어요. 잠시 뒤 새로고침해 주세요.</div>');
   });
 }
 
-// 학생이 입력한 이름·반 등은 신뢰 불가 → HTML 이스케이프 + 숫자 강제 변환(XSS 방지)
+// 학생이 입력한 이름·반·계획은 신뢰 불가 → HTML 이스케이프 + 숫자 강제 변환(XSS 방지)
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
   c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = v => (Number(v) || 0);
+const mood = v => { const n = num(v); return n >= 1 && n <= 5 ? n : 0; };
 const stageInfo = s => {
   const st = Math.max(1, Math.min(4, num(s.stage) || 1));
   return s.state === "done"  ? { txt: "🏆 완주!", cls: "done" } :
@@ -195,22 +338,20 @@ const stageInfo = s => {
          s.state === "clear" ? { txt: `${st}단계 클리어 🚩`, cls: "s" + st } :
                                { txt: `${st}단계 모험 중 🏃`, cls: "s" + st };
 };
+const planOf = r => [r.planWhen, r.planWho, r.planWhat].filter(x => typeof x === "string" && x.trim()).join(" · ");
 
-let lastUpdate = {};
 // 교사 전용 순위: 마음 점수(SEL 이해도, 게임 실력 아님) 기준
 function renderRank(scored){
-  const panel = document.getElementById("rank-panel");
+  const panel = $("#rank-panel");
   if (!scored.length){
     panel.innerHTML = '<h3>🏅 마음 점수 순위 (교사 전용)</h3><div class="rank-sub">아직 점수가 있는 학생이 없어요.</div>';
     return;
   }
   const ranked = [...scored].sort((a, b) =>
-    (b.mind || 0) - (a.mind || 0) ||
-    (b.hearts || 0) - (a.hearts || 0) ||
-    (b.gold || 0) - (a.gold || 0));
+    (b.mind || 0) - (a.mind || 0) || (b.hearts || 0) - (a.hearts || 0) || (b.gold || 0) - (a.gold || 0));
   const medal = i => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (i + 1) + ".";
   panel.innerHTML =
-    '<h3>🏅 마음 점수 순위 <span class="rank-sub">(교사 전용 · 마음 이해도 기준, 게임 실력 아님)</span></h3>' +
+    '<h3>🏅 마음 점수 순위 <span class="rank-sub">(교사 전용 · 마음 이해도 기준, 게임 실력 아님 · 화면에 띄우지 않기를 권해요)</span></h3>' +
     ranked.map((r, i) =>
       `<div class="rank-row">
         <div class="rank-num">${medal(i)}</div>
@@ -220,78 +361,143 @@ function renderRank(scored){
       </div>`).join("");
 }
 
-document.getElementById("rank-toggle").onclick = () => {
-  const p = document.getElementById("rank-panel");
-  const hidden = p.classList.toggle("hidden");
-  document.getElementById("rank-toggle").textContent = hidden ? "🏅 순위 보기 (교사 전용)" : "🏅 순위 접기";
-};
+function drawStages(rows){
+  const c = { s1:0, s2:0, s3:0, s4:0, storm:0, done:0 };
+  rows.forEach(r => { c[stageInfo(r).cls]++; });
+  const items = [["s1", "1단계"], ["s2", "2단계"], ["s3", "3단계"], ["s4", "4단계"], ["storm", "폭풍"], ["done", "완주"]];
+  $("#stages").innerHTML = items.map(([k, t]) => `<div class="stg ${k}"><b>${c[k]}</b><span>${t}</span></div>`).join("");
+}
 
-function render(snap){
-  const grid = document.getElementById("grid");
-  const rows = [];
-  snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
-  rows.sort((a, b) => (a.cls || "").localeCompare(b.cls || "") || (a.name || "").localeCompare(b.name || ""));
-
-  const doneN = rows.filter(r => r.state === "done").length;
-  const scored = rows.filter(r => typeof r.mind === "number");
-  const avgMind = scored.length ? Math.round(scored.reduce((s, r) => s + r.mind, 0) / scored.length) : null;
-  document.getElementById("summary").innerHTML =
-    `참여 <b>${rows.length}</b>명 · 완주 <b>${doneN}</b>명<br>` +
-    `<span style="font-size:13px;color:#9aa5b3;">` +
-    (avgMind !== null ? `💛 마음 점수 평균 ${avgMind}/60 · ` : "") +
-    `🛡️ 무사통과 합계 ${rows.reduce((s, r) => s + (r.shields || 0), 0)}</span>`;
-
-  // 영역별 첫 시도 정답률 (반 전체) — 가장 낮은 영역은 수업에서 다룰 주제
-  const dn = ["① 감정 알아차리기", "② 공감", "③ 화 다스리기", "④ 공동체"];
+function drawDomains(rows){
   const gSum = [0,0,0,0], aSum = [0,0,0,0];
   rows.forEach(r => {
     if (Array.isArray(r.goldS) && Array.isArray(r.ansS))
-      for (let i = 0; i < 4; i++){ gSum[i] += r.goldS[i] || 0; aSum[i] += r.ansS[i] || 0; }
+      for (let i = 0; i < 4; i++){ gSum[i] += num(r.goldS[i]); aSum[i] += num(r.ansS[i]); }
   });
-  const dEl = document.getElementById("domains");
-  if (aSum.some(a => a > 0)){
-    dEl.classList.remove("hidden");
-    const rates = aSum.map((a, i) => a ? Math.round(gSum[i] / a * 100) : null);
-    const valid = rates.filter(x => x !== null);
-    const minR = Math.min(...valid);
-    dEl.innerHTML =
-      `<span class="dlbl">첫 시도 정답률</span>` +
-      dn.map((n, i) => rates[i] === null ? "" :
-        `<span class="chip${rates[i] === minR && valid.length > 1 ? " low" : ""}">${n} <b>${rates[i]}%</b></span>`).join("") +
-      (valid.length > 1 ? `<span class="dlbl">— 주황색 영역을 수업에서 함께 이야기해 보세요</span>` : "");
-  } else dEl.classList.add("hidden");
+  const rates = aSum.map((a, i) => a ? Math.round(gSum[i] / a * 100) : null);
+  const valid = rates.filter(x => x !== null);
+  const minR = valid.length > 1 ? Math.min(...valid) : null;
+  $("#domainGrid").innerHTML = DOMAINS.map((n, i) => {
+    const low = minR !== null && rates[i] === minR;
+    return `<div class="dom s${i + 1}${rates[i] === null ? " none" : ""}${low ? " low" : ""}">
+      <div class="dn">${i + 1}. ${n}${low ? '<span class="tag">함께 이야기해 볼 주제</span>' : ""}</div>
+      <div class="dv">${rates[i] === null ? "–" : rates[i] + "%"}</div>
+      <div class="dd">${aSum[i] ? `대답 ${aSum[i]}번 중 첫 시도에 맞힌 ${gSum[i]}번` : "아직 대답이 없어요"}</div>
+    </div>`;
+  }).join("");
+}
 
+// 우리 반 마음 날씨: 시작할 때·다 마친 뒤 사람 수, 바뀐 방향 (반 전체 합계만)
+function drawMood(rows){
+  const pre = [0,0,0,0,0,0], post = [0,0,0,0,0,0];
+  let up = 0, same = 0, down = 0;
+  for (const r of rows){
+    const a = mood(r.moodPre), b = mood(r.moodPost);
+    if (a) pre[a]++;
+    if (b) post[b]++;
+    if (a && b){ if (b > a) up++; else if (b < a) down++; else same++; }
+  }
+  const cell = n => `<div class="mc${n ? "" : " zero"}">${n}</div>`;
+  let h = "<div></div>";
+  for (let v = 1; v <= 5; v++) h += `<div><img src="icons/mood-${v}.png" alt=""><div class="ml">${MOOD_LBL[v]}</div></div>`;
+  h += '<div class="rl">시작할 때</div>' + pre.slice(1).map(cell).join("");
+  h += '<div class="rl">다 마친 뒤</div>' + post.slice(1).map(cell).join("");
+  $("#moodTbl").innerHTML = h;
+  $("#mood-up").textContent = up; $("#mood-same").textContent = same; $("#mood-down").textContent = down;
+}
+
+// 실천 계획 벽: 화면에는 '무엇을'만, '언제'·이름·누구에게는 교사 전용을 열었을 때만
+function drawPlans(rows){
+  const ps = rows.filter(r => typeof r.planWhat === "string" && r.planWhat.trim());
+  if (!ps.length){
+    $("#planWall").innerHTML = '<div class="emptyNote">아직 쓴 계획이 없어요. 폭풍을 걷어 낸 학생이 쓰면 여기에 나타나요.</div>';
+    return;
+  }
+  $("#planWall").innerHTML = ps.map(r => {
+    const when = typeof r.planWhen === "string" && r.planWhen.trim() ? r.planWhen : "";
+    return `<div class="pchip">${when ? `<span class="pw">${esc(when)}</span>` : ""}${esc(r.planWhat)}` +
+      `<span class="by">— ${esc(r.cls)} ${esc(r.name) || "?"}${r.planWho ? ` · ${esc(r.planWho)}` : ""}</span></div>`;
+  }).join("");
+}
+
+let lastUpdate = {}, lastRows = [];
+function render(snap){
+  const rows = [];
+  snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+  rows.sort((a, b) => String(a.cls || "").localeCompare(String(b.cls || "")) || String(a.name || "").localeCompare(String(b.name || "")));
+  lastRows = rows;
+
+  const scored = rows.filter(r => typeof r.mind === "number");
+  const avgMind = scored.length ? Math.round(scored.reduce((s, r) => s + r.mind, 0) / scored.length) : null;
+  $("#sum-n").textContent = rows.length;
+  $("#sum-done").textContent = rows.filter(r => r.state === "done").length;
+  $("#sum-mind").textContent = avgMind === null ? "–" : avgMind;
+
+  drawStages(rows);
+  drawDomains(rows);
+  drawMood(rows);
+  drawPlans(rows);
   renderRank(scored);
 
+  const grid = $("#grid");
   if (!rows.length) return;
   grid.innerHTML = "";
   for (const r of rows){
     const info = stageInfo(r);
-    const pct = r.maxHearts ? Math.round((r.hearts || 0) / r.maxHearts * 100) : 0;
+    const pct = r.maxHearts ? Math.round(num(r.hearts) / num(r.maxHearts) * 100) : 0;
     const card = document.createElement("div");
     card.className = "stu " + info.cls;
-    const key = JSON.stringify([r.hearts, r.stage, r.state, r.gems, r.gold]);
+    const key = JSON.stringify([r.hearts, r.stage, r.state, r.gems, r.gold, r.moodPost, r.planWhat]);
     if (lastUpdate[r.id] && lastUpdate[r.id] !== key) card.classList.add("fresh");
     lastUpdate[r.id] = key;
+    const a = mood(r.moodPre), b = mood(r.moodPost);
+    const plan = planOf(r);
     card.innerHTML =
       `<div class="who">${esc(r.name) || "?"} <small>${esc(r.cls)}</small></div>` +
       `<div class="st">${info.txt}</div>` +
-      `<div class="bar"><i style="width:${pct}%"></i></div>` +
-      `<div class="nums">💛${num(r.gold)} 🤍${num(r.silver)} 🤎${num(r.bronze)} · 🛡️${num(r.shields)} · 💎${num(r.gems)} · 🌈${num(r.rainbows)}</div>`;
+      `<div class="bar"><i style="width:${Math.min(100, pct)}%"></i></div>` +
+      `<div class="nums"><span>💛${num(r.gold)} 🤍${num(r.silver)} 🤎${num(r.bronze)}</span> · <span>🛡️${num(r.shields)}</span> · <span>💎${num(r.gems)}</span> · <span>🌈${num(r.rainbows)}</span></div>` +
+      (a || b ? `<div class="mood">🌤️ ${a ? MOOD_LBL[a] : "–"} → ${b ? MOOD_LBL[b] : "–"}</div>` : "") +
+      (plan ? `<div class="plan">📝 ${esc(plan)}</div>` : "");
     grid.appendChild(card);
     setTimeout(() => card.classList.remove("fresh"), 600);
   }
 }
 
-document.getElementById("btn-go").onclick = () => {
-  const code = document.getElementById("code").value.trim().toUpperCase();
+// ── CSV 내보내기 (교사 전용) ──
+$("#btn-csv").onclick = () => {
+  if (!lastRows.length){ alert("아직 기록이 없어요!"); return; }
+  // 수식 주입 방어: 선행 = + - @ 탭은 '로 중화 (엑셀에서 수식으로 해석 방지)
+  const cq = v => { let s = String(v ?? "");
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return `"${s.replace(/"/g, '""')}"`; };
+  const head = ["반", "이름", "진행", "마음 점수(/60)", "금", "은", "동",
+    ...DOMAINS.map(d => `${d} 첫 시도에 맞힘`), "무사통과", "보석", "무지개",
+    "마음 날씨(시작)", "마음 날씨(마친 뒤)", "언제", "누구에게", "무엇을"];
+  const lines = lastRows.map(r => [
+    r.cls, r.name, stageInfo(r).txt.replace(/[^\p{L}\p{N} !]/gu, "").trim(), num(r.mind),
+    num(r.gold), num(r.silver), num(r.bronze),
+    ...[0, 1, 2, 3].map(i => Array.isArray(r.ansS) && num(r.ansS[i]) ? `${num(r.ansS[i])}번 중 ${num((r.goldS || [])[i])}번` : ""),   // '5/5'는 엑셀이 날짜로 바꿔서 글로
+    num(r.shields), num(r.gems), num(r.rainbows),
+    MOOD_LBL[mood(r.moodPre)], MOOD_LBL[mood(r.moodPost)],
+    r.planWhen || "", r.planWho || "", r.planWhat || ""
+  ].map(cq).join(","));
+  const csv = "﻿" + head.map(cq).join(",") + "\n" + lines.join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `mindjump_${curCode}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+};
+
+$("#btn-go").onclick = () => {
+  const code = $("#code").value.trim().toUpperCase();
   if (code.length < 3){ alert("3글자 이상의 교실 코드를 만들어 주세요!"); return; }
   startLive(code);
 };
 
 // ?code= 파라미터로 바로 시작 가능
 const urlCode = new URLSearchParams(location.search).get("code");
-if (urlCode){ document.getElementById("code").value = urlCode.toUpperCase(); startLive(urlCode.toUpperCase()); }
+if (urlCode){ $("#code").value = urlCode.toUpperCase(); startLive(urlCode.toUpperCase()); }
 </script>
 </body>
 </html>

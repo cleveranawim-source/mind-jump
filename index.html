@@ -128,12 +128,70 @@
     .ov{ position:fixed; }
     .card{ max-height:85vh; overflow-y:auto; }
   }
+
+  /* 2026-11 다듬기: 한국어 줄바꿈 · 정보판 · 마음 날씨 · 실천 계획 · 이어 하기 */
+  body{ word-break:keep-all; overflow-wrap:break-word; }
+  .ov > .card{ max-height:100%; overflow-y:auto; }
+  .mini{ font-size:12px; color:#7a8794; }
+  /* 위쪽 정보판 — 캔버스 글씨는 폰에서 아주 작아지므로 HTML 로 띄운다 */
+  #hud{ position:absolute; top:8px; left:8px; right:8px; z-index:4; pointer-events:none;
+        display:flex; gap:6px; align-items:flex-start; flex-wrap:wrap; }
+  #hud .pill{ background:rgba(20,23,28,.66); color:#fff; border-radius:11px; padding:5px 12px; line-height:1.35; white-space:nowrap; }
+  #hud .help{ font-size:18px; }
+  #hud .help b{ color:var(--mint); }
+  #hud .help.open{ background:rgba(11,107,69,.85); }
+  #hud .gem{ font-size:14px; color:#dfe7ee; align-self:center; }
+  #hud .stage{ margin-left:auto; font-size:14px; color:var(--mint); align-self:center; }
+  @media (max-width:520px){
+    #hud{ top:5px; left:5px; right:5px; gap:4px; }
+    #hud .pill{ padding:3px 8px; }
+    #hud .help{ font-size:15px; } #hud .gem{ font-size:12px; } #hud .stage{ display:none; }
+  }
+  /* 마음 날씨 고르기 (1 폭풍 ~ 5 맑음) */
+  .mood-q{ font-size:14px; color:#445; margin:2px 0 6px; }
+  .mood-q small{ color:#889; font-size:12px; }
+  .mood-row{ display:flex; gap:6px; justify-content:center; margin:0 auto 10px; max-width:440px; }
+  .mood-row button{ flex:1 1 0; min-width:0; font-family:inherit; font-size:12px; color:#445; background:#f4f7fa;
+    border:2px solid #e1e8ee; border-radius:12px; padding:5px 2px 4px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:1px; transition:all .12s; }
+  .mood-row button img{ width:36px; height:36px; }
+  .mood-row button.on{ border-color:var(--mint); background:#e9fbf3; color:#0b6b45; box-shadow:0 0 0 3px rgba(63,229,160,.25); }
+  #mood-diff{ font-size:14px; color:#0b6b45; min-height:1.3em; margin:-4px 0 8px; }
+  /* 실천 계획 3칸 */
+  .plan{ text-align:left; background:#f2faf6; border-radius:12px; padding:10px 12px; margin:6px 0 12px; }
+  .plan h3{ font-size:16px; margin-bottom:6px; color:#0b6b45; }
+  .plan label{ display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:14px; color:#445; }
+  .plan label span{ flex:none; width:64px; }
+  .plan input{ flex:1; min-width:0; font-family:inherit; font-size:15px; border:2px solid #dfe6ec; border-radius:10px; padding:7px 9px; outline:none; }
+  .plan input:focus{ border-color:var(--mint); }
+  .cert-plan{ font-size:15px; color:#0b6b45; background:#f2faf6; border-radius:10px; padding:8px 10px; margin-bottom:10px; line-height:1.6; }
+  /* 이어 하기 · 단계 고르기 */
+  #btn-continue{ font-size:15px; padding:11px 18px; }
+  #continue-note{ margin:2px 0 4px; }
+  details.lvls{ margin-top:8px; }
+  details.lvls summary{ cursor:pointer; font-size:14px; color:#667; list-style:none; display:inline-block; padding:4px 10px; border-radius:8px; }
+  details.lvls summary::-webkit-details-marker{ display:none; }
+  details.lvls summary:hover{ background:#f2f6f9; }
+  /* 마음의 폭풍 구름 그림 */
+  #storm-clouds img{ width:60px; height:60px; vertical-align:middle; margin:0 5px; transition:transform .3s; }
+  #storm-clouds img.clear{ transform:scale(1.08); }
+  @media (max-width:480px){
+    .inputs{ flex-wrap:wrap; }
+    #in-class, #in-name{ width:calc(50% - 4px) !important; }
+    #in-room{ width:100% !important; }
+    #storm-clouds img{ width:48px; height:48px; margin:0 3px; }
+  }
 </style>
 </head>
 <body>
 <h1>🍄 마음 점프! <span class="mint">Mind Jump</span> <button id="bgm-btn" title="배경음악 켜기/끄기">🎵</button> <button id="home-btn" class="hidden" title="처음 화면(스테이지 선택)으로">🏠</button></h1>
 <div id="wrap">
   <canvas id="game" width="960" height="540"></canvas>
+  <div id="hud" class="hidden">
+    <span class="pill help" id="hud-help"></span>
+    <span class="pill gem" id="hud-gem"></span>
+    <span class="pill stage" id="hud-stage"></span>
+  </div>
 
   <!-- 타이틀 -->
   <div id="title" class="ov">
@@ -145,21 +203,29 @@
         감정 보석을 모으고, 길에서 만난 친구들의<br>마음 고민을 함께 풀어 주며 깃발까지 도착하세요!
       </p>
       <div class="controls">
-        ⌨️ <b>← →</b> 이동 · <b>스페이스/↑</b> 점프 · <b>1·2·3</b> 대답 고르기 · <b>R</b> 다시 시작<br>
-        📱 모바일은 화면 버튼 · 💡 고민을 풀어준 자리가 <b>체크포인트</b> · 🔒 <b>친구를 모두 도와야</b> 깃발이 열려요!
+        ⌨️ <b>← →</b> 이동 · <b>스페이스</b> 점프 &nbsp;|&nbsp; 📱 화면 버튼<br>
+        🔒 길에서 만난 <b>친구를 모두 도와야</b> 깃발이 열려요!<br>
+        <span class="mini">1·2·3 대답 고르기 · R 다시 시작 · 💡 고민을 풀어 준 자리가 체크포인트</span>
       </div>
       <div class="inputs">
         <input id="in-class" placeholder="반 (예: 2-3)" maxlength="10">
         <input id="in-name" placeholder="별칭 (실명 말고)" maxlength="10">
         <input id="in-room" placeholder="교실 코드(선택)" maxlength="8" style="width:130px;">
       </div>
+      <div class="mood-q">🌤️ 지금 내 마음 날씨는? <small>(골라도 되고 안 골라도 돼요)</small></div>
+      <div class="mood-row" id="mood-pre"><button data-v="1"><img src="icons/mood-1.png" alt="">폭풍</button><button data-v="2"><img src="icons/mood-2.png" alt="">비</button><button data-v="3"><img src="icons/mood-3.png" alt="">흐림</button><button data-v="4"><img src="icons/mood-4.png" alt="">구름 조금</button><button data-v="5"><img src="icons/mood-5.png" alt="">맑음</button></div>
       <button class="btn" id="btn-start">모험 시작! ▶</button>
-      <div class="lvlrow">
-        <button class="btn ghost lvl" data-l="0">1. 감정 알아차리기</button>
-        <button class="btn ghost lvl" data-l="1">2. 친구 마음 공감</button>
-        <button class="btn ghost lvl" data-l="2">3. 화 다스리기</button>
-        <button class="btn ghost lvl" data-l="3">4. 함께하는 공동체</button>
-      </div>
+      <button class="btn ghost hidden" id="btn-continue"></button>
+      <div id="continue-note" class="mini hidden"></div>
+      <details class="lvls">
+        <summary>단계 골라서 시작하기 ▾</summary>
+        <div class="lvlrow">
+          <button class="btn ghost lvl" data-l="0">1. 감정 알아차리기</button>
+          <button class="btn ghost lvl" data-l="1">2. 친구 마음 공감</button>
+          <button class="btn ghost lvl" data-l="2">3. 화 다스리기</button>
+          <button class="btn ghost lvl" data-l="3">4. 함께하는 공동체</button>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -202,6 +268,25 @@
     </div>
   </div>
 
+  <!-- 마음 정리 (폭풍을 걷은 뒤, 수료증 전) -->
+  <div id="reflect" class="ov hidden">
+    <div class="card">
+      <h2 style="font-size:23px;">🌈 폭풍이 걷혔어요!</h2>
+      <div class="sub">수료증을 받기 전에, 오늘의 마음을 정리해 봐요</div>
+      <div class="mood-q">🌤️ 다 마친 지금, 내 마음 날씨는?</div>
+      <div class="mood-row" id="mood-post"><button data-v="1"><img src="icons/mood-1.png" alt="">폭풍</button><button data-v="2"><img src="icons/mood-2.png" alt="">비</button><button data-v="3"><img src="icons/mood-3.png" alt="">흐림</button><button data-v="4"><img src="icons/mood-4.png" alt="">구름 조금</button><button data-v="5"><img src="icons/mood-5.png" alt="">맑음</button></div>
+      <div id="mood-diff"></div>
+      <div class="plan">
+        <h3>📝 이번 주에 해 볼 한 가지 (실천 계획)</h3>
+        <label><span>언제</span><input id="plan-when" maxlength="30" placeholder="예: 내일 점심시간에"></label>
+        <label><span>누구에게</span><input id="plan-who" maxlength="30" placeholder="예: 짝꿍에게 (이름 대신)"></label>
+        <label><span>무엇을</span><input id="plan-what" maxlength="60" placeholder="예: 먼저 &quot;괜찮아?&quot; 하고 물어보기"></label>
+        <div class="mini">안 써도 수료증은 받을 수 있어요. 쓰면 수료증에 함께 담겨요.</div>
+      </div>
+      <button class="btn" id="btn-reflect-done">수료증 받기 🌈</button>
+    </div>
+  </div>
+
   <!-- 수료증 -->
   <div id="report" class="ov hidden">
     <div class="card cert">
@@ -216,6 +301,7 @@
       <div id="rep-gold" class="cert-stats" style="color:#b8860b;"></div>
       <div id="rep-stats" style="font-size:15px; color:#3a7ca5; margin-bottom:8px;"></div>
       <div id="rep-badges" class="cert-rb hidden"></div>
+      <div id="rep-plan" class="cert-plan hidden"></div>
       <p id="rep-msg" class="cert-msg">네 가지 마음 기술을 모두 익혔습니다.<br>너의 마음 모험은 이제 진짜 시작! 💚</p>
       <button class="btn" id="btn-save">이미지로 저장 📸</button>
       <button class="btn ghost" id="btn-rep-home">처음으로</button>
@@ -1160,6 +1246,7 @@ function stageClear(){
   if (stageDeaths === 0) shieldS[cur] = true;
   // 마지막 스테이지는 클리어 대신 '마음의 폭풍' 복습 관문으로
   if (cur === LEVELS.length - 1){ startStorm(); return; }
+  saveProg(cur + 1);                       // 다음 시간에 '이어 하기'로 여기부터
   state = "clear"; sfx.flag();
   document.getElementById("clear-title").textContent = "🚩 스테이지 클리어!";
   document.getElementById("clear-emoji").textContent = lv.clearEmoji;
@@ -1186,7 +1273,10 @@ function startStorm(){
 }
 function renderStorm(){
   const clouds = document.getElementById("storm-clouds");
-  clouds.textContent = Array.from({ length: 4 }, (_, i) => i < stormIdx ? "🌤️" : "⛈️").join(" ");
+  // 걷힌 구름 = 해가 나온 구름(mood-4), 남은 구름 = 먹구름(mood-1)
+  clouds.innerHTML = Array.from({ length: 4 }, (_, i) => i < stormIdx
+    ? '<img class="clear" src="icons/mood-4.png" alt="걷힌 구름">'
+    : '<img src="icons/mood-1.png" alt="먹구름">').join("");
   const q = stormQs[stormIdx];
   document.getElementById("storm-q").textContent = `구름 ${stormIdx + 1}/4 — ${q.q}`;
   const fb = document.getElementById("storm-fb");
@@ -1215,7 +1305,7 @@ document.getElementById("storm-next").onclick = () => {
   stormIdx++;
   if (stormIdx >= 4){
     document.getElementById("storm").classList.add("hidden");
-    showReport();
+    openReflect();
   } else { sfx.gem(); renderStorm(); }
 };
 
@@ -1252,7 +1342,14 @@ function showReport(){
   const bEl = document.getElementById("rep-badges");
   bEl.classList.toggle("hidden", !badges.length);
   bEl.textContent = badges.join("  ·  ");
+  const pEl = document.getElementById("rep-plan");
+  pEl.classList.toggle("hidden", !planText());
+  pEl.textContent = planText() ? "📝 나의 실천 계획 — " + planText() : "";
   document.getElementById("report").classList.remove("hidden");
+  // 수료증 그림(캔버스)은 아직 안 불러온 글꼴 조각을 못 써서 몇 글자가 다른 글꼴로 그려진다 → 그릴 글자를 미리 불러 둔다
+  if (document.fonts && document.fonts.load) document.fonts.load("23px 'Jua'", document.getElementById("report").innerText +
+    "네 가지 마음 기술을 모두 익혔습니다 너의 모험은 이제 진짜 시작 단계부터 도전해서 처음부터 하면 모을 수 있어요 나의 실천 계획 마음 점프 명지중학교 사회정서교육").catch(() => {});
+  clearProg();                            // 끝까지 왔으니 '이어 하기' 기록은 비운다
   syncProgress("done");
 }
 document.getElementById("btn-rep-home").onclick = () => goHome();
@@ -1260,11 +1357,17 @@ const heroImg = new Image();
 heroImg.src = "hero.png";
 document.getElementById("btn-save").onclick = () => {
   const c = document.createElement("canvas");
-  c.width = 1000; c.height = 700;
+  const plan = planText();
+  // 실천 계획은 줄 수를 먼저 세고, 그만큼 수료증 높이를 늘린다 (30·30·60자를 다 써도 잘리지 않게)
+  const mx = document.createElement("canvas").getContext("2d");
+  mx.font = "23px 'Jua', sans-serif";
+  const planLines = plan ? wrapLines(mx, "📝 나의 실천 계획 — " + plan, 860) : [];
+  const H = planLines.length ? 712 + planLines.length * 34 : 700;
+  c.width = 1000; c.height = H;
   const x = c.getContext("2d");
-  x.fillStyle = "#fffdf6"; x.fillRect(0, 0, 1000, 700);
-  x.strokeStyle = "#3FE5A0"; x.lineWidth = 10; x.strokeRect(20, 20, 960, 660);
-  x.strokeStyle = "#d9f7ea"; x.lineWidth = 3; x.strokeRect(38, 38, 924, 624);
+  x.fillStyle = "#fffdf6"; x.fillRect(0, 0, 1000, H);
+  x.strokeStyle = "#3FE5A0"; x.lineWidth = 10; x.strokeRect(20, 20, 960, H - 40);
+  x.strokeStyle = "#d9f7ea"; x.lineWidth = 3; x.strokeRect(38, 38, 924, H - 76);
   if (heroImg.complete && heroImg.naturalWidth){
     x.drawImage(heroImg, 66, 62, 128, 128);
     x.drawImage(heroImg, 806, 62, 128, 128);
@@ -1294,8 +1397,12 @@ document.getElementById("btn-save").onclick = () => {
   x.fillText(playedFrom === 0
     ? "네 가지 마음 기술을 모두 익혔습니다. 너의 마음 모험은 이제 진짜 시작! 💚"
     : `${playedFrom + 1}단계부터 도전해서 마음 기술을 익혔어요! 처음부터 하면 모두 모을 수 있어요 💚`, 500, 575);
+  if (planLines.length){
+    x.fillStyle = "#0b6b45"; x.font = "23px 'Jua', sans-serif";
+    planLines.forEach((ln, i) => x.fillText(ln, 500, 628 + i * 34));
+  }
   x.fillStyle = "#99a"; x.font = "18px 'Jua', sans-serif";
-  x.fillText("마음 점프! Mind Jump — 명지중학교 사회정서교육", 500, 630);
+  x.fillText("마음 점프! Mind Jump — 명지중학교 사회정서교육", 500, H - 70);
   // 저장: dataURL → Blob(동기, 사용자 제스처 유지) → 모바일은 공유 시트, PC는 다운로드
   const who = (LS.get("mj-class") || "") + "_" + (LS.get("mj-name") || "모험가");
   const fname = `마음점프_수료증_${who}.png`;
@@ -1328,8 +1435,12 @@ document.getElementById("btn-prev").onclick = () => {
 };
 // 처음 화면(스테이지 선택)으로
 function goHome(){
-  ["dlg", "clear", "storm", "report"].forEach(id => document.getElementById(id).classList.add("hidden"));
+  // 끝까지 마친 판에서 돌아오면 그 판의 마음 날씨·실천 계획은 비운다 (다음 판·다음 학생에게 넘어가지 않게)
+  if (state === "report") resetRunNotes(true);
+  ["dlg", "clear", "storm", "reflect", "report"].forEach(id => document.getElementById(id).classList.add("hidden"));
   document.getElementById("title").classList.remove("hidden");
+  document.getElementById("hud").classList.add("hidden"); hudKey = "title";
+  renderContinue();
   document.getElementById("home-btn").classList.add("hidden");
   state = "title";
   bgmStop();
@@ -1352,10 +1463,20 @@ function startGame(levelIdx){
     maxHearts += pl.npcs.length;
     if (pl.rainbow) maxRainbows++;
   }
-  // 이름·반·교실코드 저장
+  saveInputs();
+  beginPlay(levelIdx);
+}
+// 이름·반·교실코드 저장
+function saveInputs(){
   LS.set("mj-class", document.getElementById("in-class").value.trim());
   LS.set("mj-name", document.getElementById("in-name").value.trim());
   LS.set("mj-room", document.getElementById("in-room").value.trim().toUpperCase());
+}
+function beginPlay(levelIdx){
+  // 이번 판의 마음 날씨: '다 마친 뒤' 값은 비우고, 지난 판 값과 짝지어지지 않게 표시
+  moodPost = null; clearMood("mood-post"); document.getElementById("mood-diff").innerHTML = "";
+  resetRunNotes(false);
+  moodFresh = true;
   document.getElementById("title").classList.add("hidden");
   document.getElementById("home-btn").classList.remove("hidden");   // 플레이 중 처음화면 이동 버튼 노출
   loadLevel(levelIdx); state = "play";
@@ -1363,6 +1484,132 @@ function startGame(levelIdx){
   syncProgress("play");
 }
 document.getElementById("btn-start").onclick = () => startGame(0);
+
+/* ---------- 2차시 이어 하기 (같은 기기·같은 브라우저) ---------- */
+const PROG_KEY = "mj-prog";
+function saveProg(next){
+  LS.set(PROG_KEY, JSON.stringify({
+    next, playedFrom, maxGems, maxHearts, maxRainbows,
+    totalGems, totalHearts, totalRainbows, totalGold, totalSilver, totalBronze, totalDeaths,
+    goldS: [...goldS], ansS: [...ansS], shieldS: [...shieldS], d: Date.now(),
+    moodPre, owner: runOwner()
+  }));
+}
+function loadProg(){
+  try {
+    const p = JSON.parse(LS.get(PROG_KEY) || "null");
+    return p && Number.isInteger(p.next) && p.next > 0 && p.next < LEVELS.length ? p : null;
+  } catch(e){ return null; }
+}
+function clearProg(){ LS.set(PROG_KEY, ""); }
+function renderContinue(){
+  const p = loadProg();
+  const b = document.getElementById("btn-continue"), note = document.getElementById("continue-note");
+  b.classList.toggle("hidden", !p); note.classList.toggle("hidden", !p);
+  if (!p) return;
+  const d = new Date(p.d || Date.now());
+  b.textContent = `▶ 이어 하기 — ${p.next + 1}단계부터`;
+  const who = p.owner && p.owner.split("|")[1] ? `'${p.owner.split("|")[1]}' 이름으로 ` : "";
+  note.textContent = `${d.getMonth() + 1}월 ${d.getDate()}일에 ${who}${p.next}단계까지 깬 기록에 이어서 해요 (이 기기·이 브라우저)`;
+}
+document.getElementById("btn-continue").onclick = () => {
+  const p = loadProg();
+  if (!p){ renderContinue(); return; }
+  const n = v => Math.max(0, Number(v) || 0);
+  playedFrom = Math.min(n(p.playedFrom), p.next);
+  maxGems = n(p.maxGems); maxHearts = n(p.maxHearts); maxRainbows = n(p.maxRainbows);
+  totalGems = n(p.totalGems); totalHearts = n(p.totalHearts); totalRainbows = n(p.totalRainbows);
+  totalGold = n(p.totalGold); totalSilver = n(p.totalSilver); totalBronze = n(p.totalBronze);
+  totalDeaths = n(p.totalDeaths);
+  const arr4 = (a, f) => [0, 1, 2, 3].map(i => f(Array.isArray(a) ? a[i] : 0));
+  goldS = arr4(p.goldS, n); ansS = arr4(p.ansS, n); shieldS = arr4(p.shieldS, v => !!v);
+  saveInputs();
+  // 새로고침 뒤 이어 하기: 같은 날·같은 반 코드·같은 이름이면 처음 고른 마음 날씨를 되살린다
+  // (날씨를 새로 골랐으면 새 값이 우선, 다른 날이면 새 수업이라 되살리지 않는다)
+  const sameDay = new Date(p.d || 0).toDateString() === new Date().toDateString();
+  if (!moodPre && sameDay && p.owner === runOwner() && Number.isInteger(p.moodPre) && p.moodPre >= 1 && p.moodPre <= 5){
+    moodPre = p.moodPre;
+    document.querySelectorAll("#mood-pre button").forEach(x => x.classList.toggle("on", +x.dataset.v === moodPre));
+  }
+  beginPlay(p.next);
+};
+
+/* ---------- 마음 날씨 · 실천 계획 ---------- */
+const MOOD_LBL = ["", "폭풍", "비", "흐림", "구름 조금", "맑음"];
+let moodPre = null, moodPost = null, moodFresh = false;
+function bindMood(id, cb){
+  const bs = [...document.querySelectorAll(`#${id} button`)];
+  bs.forEach(b => b.addEventListener("click", () => {
+    bs.forEach(x => x.classList.toggle("on", x === b)); cb(+b.dataset.v); }));
+}
+function clearMood(id){ document.querySelectorAll(`#${id} button`).forEach(x => x.classList.remove("on")); }
+// 이 판이 누구 기록인지 (반 코드|이름)
+function runOwner(){
+  return (LS.get("mj-room") || "").trim().toUpperCase() + "|" + (LS.get("mj-name") || "").trim();
+}
+// 판마다 새로 쓰는 것: 실천 계획(판 끝에 씀), 그리고 끝난 판 뒤에는 시작 날씨도
+function resetRunNotes(withMoodPre){
+  plan.when = plan.who = plan.what = "";
+  ["plan-when", "plan-who", "plan-what"].forEach(id => { document.getElementById(id).value = ""; });
+  if (withMoodPre){ moodPre = null; clearMood("mood-pre"); }
+}
+function moodDiffText(){
+  if (!moodPost) return "";
+  if (!moodPre) return `지금 마음 날씨: <b>${MOOD_LBL[moodPost]}</b>`;
+  const d = moodPost - moodPre;
+  const tail = d > 0 ? "조금 맑아졌어요" : d < 0 ? "조금 흐려졌어요 — 그런 날도 있어요. 선생님께 말해도 괜찮아요" : "그대로예요";
+  return `처음 <b>${MOOD_LBL[moodPre]}</b> → 지금 <b>${MOOD_LBL[moodPost]}</b> · ${tail}`;
+}
+bindMood("mood-pre", v => { moodPre = v; });
+bindMood("mood-post", v => {
+  moodPost = v;
+  document.getElementById("mood-diff").innerHTML = moodDiffText();
+  sfx.good();
+  syncProgress();
+});
+const plan = { when: "", who: "", what: "" };
+function planText(){
+  const parts = [];
+  if (plan.when) parts.push(plan.when);
+  if (plan.who) parts.push(plan.who);
+  if (plan.what) parts.push(plan.what);
+  return parts.join(" · ");
+}
+function openReflect(){
+  state = "reflect";
+  document.getElementById("reflect").classList.remove("hidden");
+}
+document.getElementById("btn-reflect-done").onclick = () => {
+  plan.when = document.getElementById("plan-when").value.trim().slice(0, 30);
+  plan.who  = document.getElementById("plan-who").value.trim().slice(0, 30);
+  plan.what = document.getElementById("plan-what").value.trim().slice(0, 60);
+  document.getElementById("reflect").classList.add("hidden");
+  showReport();
+};
+// 캔버스 글줄 나누기 (낱말 단위 — 한국어 낱말 중간에서 끊지 않음)
+// 띄어쓰기 없이 한 줄보다 긴 낱말만 어쩔 수 없이 글자 단위로 나눈다
+function wrapLines(x, text, maxW){
+  const words = String(text).split(" "), lines = [];
+  const fit = s => x.measureText(s).width <= maxW;
+  const breakLong = w => {
+    let ch = [...w];
+    while (ch.length > 1 && !fit(ch.join(""))){
+      let i = ch.length - 1;
+      while (i > 1 && !fit(ch.slice(0, i).join(""))) i--;
+      lines.push(ch.slice(0, i).join("")); ch = ch.slice(i);
+    }
+    return ch.join("");
+  };
+  let line = "";
+  for (const w of words){
+    const t = line ? line + " " + w : w;
+    if (fit(t)){ line = t; continue; }
+    if (line) lines.push(line);
+    line = breakLong(w);
+  }
+  if (line) lines.push(line);
+  return lines;
+}
 document.querySelectorAll(".lvl").forEach(b => b.onclick = () => startGame(+b.dataset.l));
 
 /* ---------- 픽셀아트 타일셋 (코드 생성 — 외부 이미지 없음) ---------- */
@@ -1418,9 +1665,15 @@ function bgFor(i){
 // 주인공 3D 스프라이트 — 6포즈를 단일 아틀라스 1장으로 로드 (부분 로드/캐시로 인한 깜빡임 원천 차단)
 const HERO_ATLAS = new Image();
 HERO_ATLAS.onload = () => { if (typeof state !== "undefined" && state !== "play") draw(); };
-HERO_ATLAS.src = "hero/atlas.png";
+HERO_ATLAS.src = "hero/atlas_ol.png";   // 짙은 청록(#236856) 윤곽 — 연두 언덕에서도 또렷하게
 const HERO_FRAME = { idle: 0, walk1: 1, walk2: 2, jump: 3, fall: 4, hurt: 5 };
 const HERO_FS = 260;   // 아틀라스 한 프레임 크기
+// 감정 보석 그림 (코덱스 GPT 이미지, 투명 PNG 128px)
+const GEM_FILE = { "😊":"gem-joy", "😢":"gem-sad", "😡":"gem-angry", "😨":"gem-fear", "🥰":"gem-love",
+                   "💛":"gem-heart", "💧":"gem-drop", "⭐":"gem-star", "🌈":"gem-rainbow" };
+const GEM_IMG = {};
+for (const [e, f] of Object.entries(GEM_FILE)){ const im = new Image(); im.src = "icons/" + f + ".png"; GEM_IMG[e] = im; }
+function gemImg(e){ const im = GEM_IMG[e]; return im && im.complete && im.naturalWidth ? im : null; }
 
 function draw(){
   const L = lv || parseLevel(0);
@@ -1519,12 +1772,14 @@ function draw(){
     }
   }
 
-  // 보석
+  // 보석 (그림이 아직 안 왔으면 이모지로)
   ctx.font = "24px sans-serif";
   for (const g of L.gems){
     if (g.got) continue;
     const bob = Math.sin(time*3 + g.c * 0.8) * 4;
-    ctx.fillText(g.e, g.c*T + T/2, g.r*T + T/2 + bob);
+    const im = gemImg(g.e);
+    if (im) ctx.drawImage(im, g.c*T + T/2 - 17, g.r*T + T/2 + bob - 17, 34, 34);
+    else ctx.fillText(g.e, g.c*T + T/2, g.r*T + T/2 + bob);
   }
 
   // 움직이는 발판
@@ -1543,7 +1798,9 @@ function draw(){
     const bob = Math.sin(time*3) * 5;
     ctx.font = "28px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.globalAlpha = 0.8 + Math.sin(time*5) * 0.2;
-    ctx.fillText("🌈", L.rainbow.c*T + T/2, L.rainbow.r*T + T/2 + bob);
+    const rim = gemImg("🌈");
+    if (rim) ctx.drawImage(rim, L.rainbow.c*T + T/2 - 20, L.rainbow.r*T + T/2 + bob - 20, 40, 40);
+    else ctx.fillText("🌈", L.rainbow.c*T + T/2, L.rainbow.r*T + T/2 + bob);
     ctx.globalAlpha = 1;
   }
 
@@ -1720,29 +1977,23 @@ function draw(){
 
   ctx.restore();
 
-  // HUD (박스는 텍스트에 맞춰 크기 조절, 양쪽 높이·세로중앙 정렬 통일)
-  if (state !== "title"){
-    const solved = L.npcs.filter(n => n.answered).length;
-    const HY = 10, HH = 34, HCY = HY + HH / 2;
-    ctx.textBaseline = "middle";
-    // 왼쪽: 진행 상황
-    ctx.font = "18px 'Jua', sans-serif"; ctx.textAlign = "left";
-    const info = `💎 ${totalGems}/${maxGems}   💛${totalGold} 🤍${totalSilver} 🤎${totalBronze}   💬 ${solved}/${L.npcs.length}`;
-    const iw = ctx.measureText(info).width;
-    ctx.fillStyle = "rgba(20,23,28,.55)";
-    roundRect(12, HY, iw + 30, HH, 11); ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.fillText(info, 27, HCY);
-    // 오른쪽: 스테이지 이름
-    ctx.font = "16px 'Jua', sans-serif"; ctx.textAlign = "right";
-    const nm = L.name;
-    const w = ctx.measureText(nm).width + 30;
-    ctx.fillStyle = "rgba(20,23,28,.55)";
-    roundRect(VW - 12 - w, HY, w, HH, 11); ctx.fill();
-    ctx.fillStyle = "#3FE5A0";
-    ctx.fillText(nm, VW - 27, HCY);
-    ctx.textBaseline = "alphabetic";
-  }
+  // 정보판 (HTML) — 깃발을 여는 조건인 '도운 친구'를 맨 앞에 크게
+  updateHud(L);
+}
+let hudKey = "";
+function updateHud(L){
+  const hud = document.getElementById("hud");
+  if (state === "title"){ if (hudKey !== "title"){ hud.classList.add("hidden"); hudKey = "title"; } return; }
+  const solved = L.npcs.filter(n => n.answered).length, need = L.npcs.length;
+  const key = [solved, need, totalGems, maxGems, L.name].join("|");
+  if (key === hudKey) return;
+  hudKey = key;
+  hud.classList.remove("hidden");
+  const help = document.getElementById("hud-help");
+  help.classList.toggle("open", solved >= need);
+  help.innerHTML = solved >= need ? `🚩 깃발이 열렸어요! <b>${solved}/${need}</b>` : `🤝 도운 친구 <b>${solved}/${need}</b>`;
+  document.getElementById("hud-gem").textContent = `💎 보석 ${totalGems}/${maxGems}`;
+  document.getElementById("hud-stage").textContent = L.name;
 }
 
 /* ---------- 메인 루프 ---------- */
@@ -1813,16 +2064,33 @@ function syncProgress(st){
     deaths: totalDeaths, shields,
     goldS: [...goldS], ansS: [...ansS]
   };
-  const key = JSON.stringify(data);
+  // 마음 날씨(1 폭풍 ~ 5 맑음) · 실천 계획 — 고르거나 쓴 것만
+  if (moodPre) data.moodPre = moodPre;
+  if (moodPost) data.moodPost = moodPost;
+  if (plan.when) data.planWhen = plan.when;
+  if (plan.who) data.planWho = plan.who;
+  if (plan.what) data.planWhat = plan.what;
+  const key = JSON.stringify(data) + (moodFresh ? "|new" : "");
   if (key === lastSync) return;      // 변화 없으면 쓰기 생략
   lastSync = key;
+  const wr = { ...data, t: firebase.firestore.FieldValue.serverTimestamp() };
+  const wasFresh = moodFresh;
+  if (moodFresh){
+    // 새 판: 지난 판의 마음 날씨가 이번 판 값과 짝지어지지 않게 비운다
+    const del = firebase.firestore.FieldValue.delete();
+    if (!moodPre) wr.moodPre = del;
+    if (!moodPost) wr.moodPost = del;
+    if (!plan.when) wr.planWhen = del;
+    if (!plan.who) wr.planWho = del;
+    if (!plan.what) wr.planWhat = del;
+    moodFresh = false;
+  }
   try {
     // 문서 ID = 익명 로그인 uid (규칙이 내 uid 문서만 쓰게 함)
     fbAuth()
-      .then(uid => d.collection("rooms").doc(code).collection("students").doc(uid)
-        .set({ ...data, t: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }))
-      .catch(() => { lastSync = ""; });   // 실패하면 다음 동기화 때 다시 시도
-  } catch(e){ lastSync = ""; }
+      .then(uid => d.collection("rooms").doc(code).collection("students").doc(uid).set(wr, { merge: true }))
+      .catch(() => { lastSync = ""; if (wasFresh) moodFresh = true; });   // 실패하면 다음 동기화 때 다시 시도
+  } catch(e){ lastSync = ""; if (wasFresh) moodFresh = true; }
 }
 setInterval(() => { if (state === "play" || state === "storm") syncProgress(); }, 12000);
 
@@ -1832,6 +2100,7 @@ if (urlRoom) LS.set("mj-room", urlRoom.trim().toUpperCase());
 document.getElementById("in-class").value = LS.get("mj-class") || "";
 document.getElementById("in-name").value = LS.get("mj-name") || "";
 document.getElementById("in-room").value = LS.get("mj-room") || "";
+renderContinue();
 
 // PWA 서비스워커 (배포 환경에서만)
 if ("serviceWorker" in navigator && location.protocol === "https:")
