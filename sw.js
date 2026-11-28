@@ -1,6 +1,6 @@
 /* 마음 점프! 서비스워커 — 오프라인 지원
    index.html은 network-first(항상 최신), 나머지는 cache-first */
-const CACHE = "mind-jump-v9";
+const CACHE = "mind-jump-v10";
 const ASSETS = [
   "./", "./index.html", "./teacher.html", "./manifest.json",
   "./icon-192.png", "./icon-512.png", "./hero.png",
@@ -29,6 +29,9 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
+  // 영상은 캐시에 담지 않고 브라우저가 직접 받게 둔다
+  // (구간 요청의 206 응답은 캐시에 넣을 수 없고, 사파리는 구간 응답이 있어야 영상을 재생한다)
+  if (e.request.headers.has("range") || /\.mp4(\?|$)/.test(e.request.url)) return;
   // 페이지 이동(index.html)은 항상 네트워크 우선 → 업데이트 즉시 반영, 오프라인이면 캐시
   if (e.request.mode === "navigate"){
     e.respondWith(
