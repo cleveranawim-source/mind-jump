@@ -808,13 +808,23 @@ function parseLevel(i){
       if (grid[r][c] && !grid[r-1][c]){
         const h = (c * 2654435761 >>> 0) % 100;
         const above = (L.rows[r-1] || "").padEnd(L.width, ".")[c];
-        if (h < 22 && above === ".")
-          decos.push({ x: c*T + 6 + h % 28, y: r*T - 9, e: DSET[h % DSET.length], s: 15 + h % 9 });
+        if (h < 32 && above === "."){
+          // 그림 장식은 발판 끝에서 허공에 뜨지 않게 안쪽으로 당긴다 (gx·gy = 그림이 서는 자리)
+          const openL = c === 0 || !grid[r][c-1], openR = c === L.width - 1 || !grid[r][c+1];
+          const gx = c*T + (openL && openR ? 20 : openL ? 25 : openR ? 15 : 12 + h % 17);
+          decos.push({ x: c*T + 6 + h % 28, y: r*T - 9, e: DSET[h % DSET.length], s: 15 + h % 9,
+                       h, gx, gy: r*T, old: h < 22, narrow: openL && openR });
+        }
         break;
       }
     }
   }
-  return { ...L, grid, gems, npcs, hazards, flag, spawn, movers, rainbow, decos, pxW: L.width * T, gotCount: 0 };
+  // 바닥 그림용: 각 칸이 맨 위에서 몇 번째 흙인지 (0 = 잔디가 얹힌 윗칸)
+  const depth = grid.map(row => row.map(() => 0));
+  for (let r = 1; r < ROWS; r++)
+    for (let c = 0; c < L.width; c++)
+      if (grid[r][c] && grid[r-1][c]) depth[r][c] = depth[r-1][c] + 1;
+  return { ...L, grid, depth, gems, npcs, hazards, flag, spawn, movers, rainbow, decos, pxW: L.width * T, gotCount: 0 };
 }
 
 function solid(c, r){
@@ -1675,8 +1685,138 @@ const GEM_IMG = {};
 for (const [e, f] of Object.entries(GEM_FILE)){ const im = new Image(); im.src = "icons/" + f + ".png"; GEM_IMG[e] = im; }
 function gemImg(e){ const im = GEM_IMG[e]; return im && im.complete && im.naturalWidth ? im : null; }
 
+/* ---------- 지형·장식 그림 (2026-11 힉스필드 소프트 3D — 배경·주인공과 같은 결) ----------
+   그림이 아직 안 왔거나 못 받으면 예전 방식(픽셀 타일·이모지)으로 그린다. */
+const ART = {};
+function art(src){
+  if (!(src in ART)){
+    const im = new Image();
+    im.onload = () => { if (typeof state !== "undefined" && state !== "play") draw(); };
+    im.src = src;
+    ART[src] = im;
+  }
+  const im = ART[src];
+  return im.complete && im.naturalWidth ? im : null;
+}
+// 바닥: 스테이지별 6×4칸 묶음 (첫 줄 = 잔디·껍질이 얹힌 윗칸, 아래 세 줄 = 흙·돌)
+const TILE_PX = 128;
+// 장식·위험물: 스테이지별 8칸 묶음. [칸 번호, 크기(월드 px)]
+const DECO_PX = 144;
+const DECO_SET = [
+  { deco:[[0,34],[1,32],[2,30],[3,26],[4,36],[5,34],[6,30]], hazard:[7],    hz:46 },
+  { deco:[[0,34],[1,34],[2,32],[3,36],[4,32],[5,36],[6,30]], hazard:[7],    hz:46 },
+  { deco:[[0,36],[1,30],[3,34],[4,28],[5,36]],               hazard:[6,7],  hz:44 },
+  { deco:[[0,52],[1,36],[2,38],[3,34],[4,40],[5,32]],        hazard:[6,7],  hz:46 }
+];
+// 드러난 옆·아랫면에 얹는 옅은 그늘 (한 번만 만들어 둔다)
+let SHADE = null;
+function shadeStrips(){
+  if (SHADE) return SHADE;
+  const mk = (w, h, x0, y0, x1, y1, a) => {
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d"), g = x.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, `rgba(20,14,30,${a})`); g.addColorStop(1, "rgba(20,14,30,0)");
+    x.fillStyle = g; x.fillRect(0, 0, w, h); return c;
+  };
+  SHADE = { l: mk(16, 8, 0, 0, 16, 0, .26), r: mk(16, 8, 16, 0, 0, 0, .2), b: mk(8, 20, 0, 20, 0, 0, .34) };
+  return SHADE;
+}
+function drawTileArt(L, im, c, r){
+  const d = L.depth[r][c], x = c*T, y = r*T;
+  const sx = (c % 6) * TILE_PX, sy = (d === 0 ? 0 : 1 + (d - 1) % 3) * TILE_PX;
+  const oL = c > 0 && !L.grid[r][c-1], oR = c < L.width - 1 && !L.grid[r][c+1];
+  const oB = r < ROWS - 1 && !L.grid[r+1][c];
+  if (!(oL || oR || oB)){ ctx.drawImage(im, sx, sy, TILE_PX, TILE_PX, x, y, T + .5, T + .5); return; }   // 살짝 겹쳐 이음매 없이
+  const w = T + (oR ? 0 : .5), h = T + (oB ? 0 : .5);
+  const tl = d === 0 && oL ? 10 : 0, tr = d === 0 && oR ? 10 : 0, br = oB && oR ? 9 : 0, bl = oB && oL ? 9 : 0;
+  ctx.save();
+  ctx.beginPath();                                   // 드러난 모서리만 둥글게
+  ctx.moveTo(x + tl, y);
+  ctx.lineTo(x + w - tr, y); ctx.arcTo(x + w, y, x + w, y + tr, tr);
+  ctx.lineTo(x + w, y + h - br); ctx.arcTo(x + w, y + h, x + w - br, y + h, br);
+  ctx.lineTo(x + bl, y + h); ctx.arcTo(x, y + h, x, y + h - bl, bl);
+  ctx.lineTo(x, y + tl); ctx.arcTo(x, y, x + tl, y, tl);
+  ctx.closePath(); ctx.clip();
+  ctx.drawImage(im, sx, sy, TILE_PX, TILE_PX, x, y, T + .5, T + .5);
+  const S = shadeStrips();
+  if (oL) ctx.drawImage(S.l, x, y, 7, T);
+  if (oR) ctx.drawImage(S.r, x + T - 7, y, 7, T);
+  if (oB) ctx.drawImage(S.b, x, y + T - 9, T, 9);
+  ctx.restore();
+}
+// 묶음 그림에서 한 칸 꺼내 그리기 — (cx, by) = 밑변 가운데
+function drawCell(im, idx, cx, by, size, px){
+  ctx.drawImage(im, idx * px, 0, px, px, cx - size / 2, by - size, size, size);
+}
+// 길 위 친구들 온몸 그림 (2026-11 힉스필드 클레이 인형) — 대화창 얼굴 그림과 같은 동물·같은 목도리. 40칸(10×4) 한 장 묶음.
+// 못 불러오면 예전처럼 얼굴 딱지로 그린다. 값 = [칸 번호, 칸 안에서의 키(px)]
+const NPC_PX = 176, NPC_COLS = 10, NPC_FEET = 169 / 176, NPC_SIZE = 62, NPC_SRC = "npc/body.webp";
+const NPC_BODY = {};
+("rabbit:160 butterfly:160 bear:160 squirrel:160 octopus:160 frog:160 duck:160 mouse:160 bee:160 raccoon:160 " +
+ "fox:160 cat:160 dog:160 turtle:160 sheep:160 swan:160 flamingo:160 dolphin:160 parrot:160 whale:155 " +
+ "tiger:160 owl:160 koala:160 chick:160 hedgehog:160 wolf:160 crab:109 trex:160 dragon:160 eagle:160 " +
+ "penguin:160 cow:160 hamster:160 lion:160 elephant:146 hen:160 beaver:160 pony:160 kangaroo:160 seal:149")
+  .split(" ").forEach((t, i) => { const [k, h] = t.split(":"); NPC_BODY[k + ".png"] = [i, +h]; });
+art(NPC_SRC);   // 미리 받아 둔다 (첫 스테이지에서 딱지 → 인형으로 바뀌는 깜빡임 줄이기)
+// 말을 거는 친구 표시: 작은 말풍선(아직) / 민트 하트(도와줌)
+function drawTalkBadge(x, y, done){
+  ctx.save();
+  ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(35,104,86,.55)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  if (done){
+    ctx.fillStyle = "#22c487";
+    ctx.beginPath();
+    ctx.moveTo(x, y + 4.6);
+    ctx.bezierCurveTo(x - 7, y - .4, x - 4, y - 5.6, x, y - 2);
+    ctx.bezierCurveTo(x + 4, y - 5.6, x + 7, y - .4, x, y + 4.6);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = "#236856";
+    for (let i = -1; i <= 1; i++){ ctx.beginPath(); ctx.arc(x + i * 4, y, 1.5, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.restore();
+}
+// 부드러운 빛 번짐 (가운데가 밝고 가장자리로 스르르 사라짐). 색마다 한 번만 만들어 둔다
+const GLOW = {};
+function drawGlow(x, y, rx, ry, color, alpha){
+  let g = GLOW[color];
+  if (!g){
+    g = GLOW[color] = document.createElement("canvas"); g.width = g.height = 96;
+    const c = g.getContext("2d"), rg = c.createRadialGradient(48, 48, 0, 48, 48, 48);
+    const n = parseInt(color.slice(1), 16), rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(",");
+    rg.addColorStop(0, `rgba(${rgb},1)`); rg.addColorStop(.45, `rgba(${rgb},.42)`); rg.addColorStop(1, `rgba(${rgb},0)`);
+    c.fillStyle = rg; c.fillRect(0, 0, 96, 96);
+  }
+  ctx.save(); ctx.globalAlpha = alpha; ctx.drawImage(g, x - rx, y - ry, rx * 2, ry * 2); ctx.restore();
+}
+// 반짝이 (깃발이 열렸을 때)
+function drawSpark(x, y, r, a){
+  ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = "#fff6b8";
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++){
+    const rr = i % 2 ? r * .32 : r, t = i * Math.PI / 4 - Math.PI / 2;
+    ctx.lineTo(x + Math.cos(t) * rr, y + Math.sin(t) * rr);
+  }
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// 큰 화면·고해상도 화면에서 또렷하게: 캔버스 속 픽셀 수만 늘린다 (그리는 좌표는 960×540 그대로)
+let RES = 1;
+function fitRes(){
+  const touch = window.matchMedia && matchMedia("(pointer: coarse)").matches;
+  const want = (cvs.clientWidth || VW) * (window.devicePixelRatio || 1) / VW;
+  const k = want > 1.6 && !touch ? 2 : want > 1.15 ? 1.5 : 1;       // 손가락 기기는 1.5배까지(발열·배터리)
+  if (cvs.width === VW * k) return false;
+  RES = k; cvs.width = VW * k; cvs.height = VH * k;
+  return true;
+}
+addEventListener("resize", () => { if (fitRes()) draw(); });
+if (window.ResizeObserver) new ResizeObserver(() => { if (fitRes()) draw(); }).observe(cvs);
+
 function draw(){
   const L = lv || parseLevel(0);
+  ctx.setTransform(RES, 0, 0, RES, 0, 0);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
   const bgi = bgFor(cur % 4);
   if (bgi.complete && bgi.naturalWidth){
     // 이미지 배경: 홀수 타일은 좌우 반전해 이음새 없이 반복
@@ -1732,12 +1872,16 @@ function draw(){
   ctx.scale(ZOOM, ZOOM);
   ctx.translate(-Math.round(camX), -Math.round(camY));
 
-  // 타일 (픽셀아트 타일셋, 레벨당 1회 생성 후 캐시)
-  if (!L.tileset) L.tileset = makeTileset(L.pal);
-  const c0 = Math.floor(camX / T), c1 = Math.min(L.width - 1, Math.ceil((camX + VW) / T));
+  // 타일: 소프트 3D 바닥 그림 (그림이 없으면 예전 픽셀 타일)
+  const SI = cur % 4, SET = DECO_SET[SI];
+  const tileIm = L.depth ? art("tiles/s" + (SI + 1) + ".webp") : null;
+  const decoIm = art("deco/s" + (SI + 1) + ".webp");
+  if (!tileIm && !L.tileset) L.tileset = makeTileset(L.pal);
+  const c0 = Math.max(0, Math.floor(camX / T)), c1 = Math.min(L.width - 1, Math.ceil((camX + VW) / T));
   for (let r = 0; r < ROWS; r++){
     for (let c = c0; c <= c1; c++){
       if (!L.grid[r][c]) continue;
+      if (tileIm){ drawTileArt(L, tileIm, c, r); continue; }
       const isTop = r === 0 || !L.grid[r-1][c];
       ctx.drawImage(isTop ? L.tileset.top : L.tileset.fill, c*T, r*T);
     }
@@ -1746,7 +1890,13 @@ function draw(){
   // 배경 데코 (꽃·풀·등불)
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (const d of (L.decos || [])){
-    if (d.x < camX - 40 || d.x > camX + VW + 40) continue;
+    if (d.x < camX - 60 || d.x > camX + VW + 60) continue;
+    if (decoIm && d.gx !== undefined){
+      const [idx, size] = SET.deco[d.h % SET.deco.length];
+      drawCell(decoIm, idx, d.gx, d.gy + 3, d.narrow ? Math.min(size, 30) : size, DECO_PX);   // 3px 심어서 풀에 박힌 느낌
+      continue;
+    }
+    if (d.old === false) continue;                   // 이모지로 그릴 때는 예전 밀도 그대로
     ctx.font = d.s + "px sans-serif";
     ctx.fillText(d.e, d.x, d.y);
   }
@@ -1756,7 +1906,20 @@ function draw(){
   // 가시 / 불꽃
   for (const h of L.hazards){
     const x = h.c*T, y = h.r*T;
-    if (L.pal.hazard){
+    if (decoIm){
+      const idx = SET.hazard[h.c % SET.hazard.length];
+      if (L.pal.hazard){
+        // 불꽃·번개: 살랑이며 숨 쉬듯 커졌다 작아진다 (가만히 있는 장식과 구별)
+        const k = 1 + Math.sin(time*7 + h.c*1.9) * 0.07, bob = Math.sin(time*6 + h.c) * 1.5;
+        drawGlow(x + T/2, y + T - 16, 34, 32, L.pal.night ? "#ffe45c" : "#ffb347", 0.42 + Math.sin(time*7 + h.c*1.9) * 0.12);
+        ctx.save();
+        ctx.translate(x + T/2, y + T + 2); ctx.scale(2 - k, k);
+        drawCell(decoIm, idx, 0, bob > 0 ? 0 : bob, SET.hz, DECO_PX);
+        ctx.restore();
+      } else {
+        drawCell(decoIm, idx, x + T/2, y + T + 3, SET.hz, DECO_PX);
+      }
+    } else if (L.pal.hazard){
       const bob = Math.sin(time*6 + h.c) * 2;
       ctx.font = "30px sans-serif";
       ctx.fillText("🔥", x + T/2, y + T/2 + 6 + bob);
@@ -1785,6 +1948,12 @@ function draw(){
   // 움직이는 발판
   for (const m of (L.movers || [])){
     const mx = m.x !== undefined ? m.x : m.cx - m.w/2 + Math.sin(time*1.2 + m.phase) * m.range;
+    const mvIm = art("deco/mover.webp");
+    if (mvIm){
+      const mh = mvIm.naturalHeight / 4;             // 스테이지 색 4벌이 세로로 쌓여 있다
+      ctx.drawImage(mvIm, 0, SI * mh, mvIm.naturalWidth, mh, mx - 2, m.y - 1.5, m.w + 4, (m.w + 4) * mh / mvIm.naturalWidth);
+      continue;
+    }
     ctx.fillStyle = L.pal.grass;
     ctx.strokeStyle = "rgba(0,0,0,.25)"; ctx.lineWidth = 2;
     roundRect(mx, m.y, m.w, m.h, 6); ctx.fill(); ctx.stroke();
@@ -1808,6 +1977,41 @@ function draw(){
   for (const n of L.npcs){
     const x = n.c*T + T/2, base = (n.r+1)*T;
     const bob = n.answered ? 0 : Math.sin(time*4 + n.c) * 3;
+    const pf = PORTRAITS[n.q.name];
+    const body = pf ? NPC_BODY[pf] : null, bim = body ? art(NPC_SRC) : null;
+    if (bim){
+      // 온몸 인형: 발을 땅에 붙이고 가볍게 숨쉬기만 (도와준 친구는 더 잔잔하게)
+      const br = Math.sin(time * 2.6 + n.c) * (n.answered ? 0.012 : 0.028);
+      const top = base + 2 - body[1] / NPC_PX * NPC_SIZE;                 // 머리 꼭대기
+      ctx.save();
+      ctx.globalAlpha = 0.22; ctx.fillStyle = "#0d1712";
+      ctx.beginPath(); ctx.ellipse(x, base + 1, 18, 4, 0, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.translate(x, base + 2);                                         // 풀에 살짝 심어서 뜬 느낌 없이
+      ctx.scale(1 - br * 0.6, 1 + br);
+      ctx.drawImage(bim, (body[0] % NPC_COLS) * NPC_PX, Math.floor(body[0] / NPC_COLS) * NPC_PX, NPC_PX, NPC_PX,
+                    -NPC_SIZE / 2, -NPC_FEET * NPC_SIZE, NPC_SIZE, NPC_SIZE);
+      ctx.restore();
+      drawTalkBadge(x + 20, top + 5 + bob * 0.6, n.answered);
+      continue;
+    }
+    const pim = pf ? art("npc/" + pf) : null;
+    if (pim){
+      // (온몸 그림을 못 받았을 때) 대화창과 같은 얼굴을 둥근 딱지로
+      const cy = base - 25 + bob, R0 = 20;
+      ctx.save();
+      ctx.globalAlpha = 0.2; ctx.fillStyle = "#0d1712";
+      ctx.beginPath(); ctx.ellipse(x, base + 1, 15, 4, 0, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#fff"; ctx.strokeStyle = n.answered ? "#22c487" : "#236856"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, cy, R0 + 2.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, cy, R0, 0, Math.PI*2); ctx.clip();
+      const z = R0 * 2 * 1.12;                        // 얼굴이 조금 더 크게 보이도록 살짝 당김
+      ctx.drawImage(pim, x - z/2, cy - z/2, z, z);
+      ctx.restore();
+      drawTalkBadge(x + 19, cy - 20, n.answered);
+      continue;
+    }
     ctx.font = "34px sans-serif";
     ctx.fillText(n.q.emoji, x, base - 22 + bob);
     ctx.font = "18px sans-serif";
@@ -1818,6 +2022,22 @@ function draw(){
   if (L.flag){
     const fx = L.flag.c*T + 18, base = (L.flag.r+1)*T;
     const unlocked = L.npcs.every(n => n.answered);
+    const flIm = art("deco/flag.webp");
+    if (flIm){
+      // 묶음 그림: 왼칸 = 열린 깃발(민트 하트), 오른칸 = 잠긴 깃발(회색 자물쇠). 기둥은 칸의 46px 지점
+      const cw = flIm.naturalWidth / 2, k = 126 / flIm.naturalHeight;
+      if (unlocked) drawGlow(fx + 26, base - 90, 62, 50, "#3FE5A0", 0.40 + (Math.sin(time*4) + 1) * 0.10);
+      ctx.save();
+      ctx.translate(fx + 2.5, base + 2);
+      if (unlocked) ctx.rotate(Math.sin(time*2.4) * 0.03);
+      ctx.drawImage(flIm, unlocked ? 0 : cw, 0, cw, flIm.naturalHeight, -46 * k, -126, cw * k, 126);
+      ctx.restore();
+      if (unlocked){
+        drawSpark(fx + 44, base - 124, 6, 0.5 + (Math.sin(time*6) + 1) * 0.25);
+        drawSpark(fx - 12, base - 96, 4, 0.5 + (Math.sin(time*6 + 2) + 1) * 0.25);
+        drawSpark(fx + 58, base - 78, 3.5, 0.5 + (Math.sin(time*6 + 4) + 1) * 0.25);
+      }
+    } else {
     ctx.fillStyle = "#8d99a6"; ctx.fillRect(fx, base - 120, 5, 120);
     ctx.fillStyle = unlocked ? "#3FE5A0" : "#aab4bf";
     const wav = Math.sin(time*4) * 4;
@@ -1835,6 +2055,7 @@ function draw(){
       ctx.fillText("✨", fx + 3, base - 134);
       ctx.globalAlpha = 1;
     }
+    } // 깃발 폴백 끝
   }
 
   // 플레이어 "마음이" — 소프트 3D 스프라이트 (로드 전 벡터 폴백)

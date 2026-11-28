@@ -1,11 +1,15 @@
 /* 마음 점프! 서비스워커 — 오프라인 지원
    index.html은 network-first(항상 최신), 나머지는 cache-first */
-const CACHE = "mind-jump-v8";
+const CACHE = "mind-jump-v9";
 const ASSETS = [
   "./", "./index.html", "./teacher.html", "./manifest.json",
   "./icon-192.png", "./icon-512.png", "./hero.png",
   "./bg/bg1.jpg", "./bg/bg2.jpg", "./bg/bg3.jpg", "./bg/bg4.jpg",
-  "./hero/atlas.png"
+  "./hero/atlas.png", "./hero/atlas_ol.png",
+  "./tiles/s1.webp", "./tiles/s2.webp", "./tiles/s3.webp", "./tiles/s4.webp",
+  "./deco/s1.webp", "./deco/s2.webp", "./deco/s3.webp", "./deco/s4.webp",
+  "./deco/flag.webp", "./deco/mover.webp",
+  "./npc/body.webp"
 ];
 
 self.addEventListener("install", e => {
